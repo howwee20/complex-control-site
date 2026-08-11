@@ -3,117 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Complex Control is a local-first RFID race timing and control system built for live track operation." />
-    <meta name="theme-color" content="#080808" />
-    <meta property="og:title" content="Complex Control" />
-    <meta property="og:description" content="Timing, control, and results from tag read to finish line." />
-    <meta property="og:image" content="https://mycomplexcontrol.com/assets/complex-control-logo.png" />
-    <title>Complex Control | Timing, Control, Results</title>
-    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="theme-color" content="#0c1117" />
+    <meta name="description" content="Complex Control race timing and event operations" />
+    <title>Complex Control</title>
+    <script type="module" crossorigin src="/assets/index-CznpPHlG.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C2LSoIIr.css">
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand-crop brand-small" href="#top" aria-label="Complex Control home">
-        <img src="assets/complex-control-logo.png" alt="Complex Control — Timing, Control, Results" />
-      </a>
-      <nav aria-label="Main navigation">
-        <a href="#system">System</a>
-        <a href="#workflow">Workflow</a>
-        <a class="nav-cta" href="#track-testing">Track testing</a>
-      </nav>
-    </header>
-
-    <main id="top">
-      <section class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow">RFID race timing</p>
-          <h1>From tag read<br />to race result.</h1>
-          <p class="hero-lede">Complex Control joins live RFID timing, trackside race control, and real-time results in one local-first system.</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#system">See the system</a>
-            <a class="button button-secondary" href="#track-testing">Track program</a>
-          </div>
-          <dl class="proof-strip" aria-label="Verified system capabilities">
-            <div><dt>Live</dt><dd>RFID tag capture</dd></div>
-            <div><dt>Local</dt><dd>Pi edge processing</dd></div>
-            <div><dt>Real time</dt><dd>Laps and results</dd></div>
-          </dl>
-        </div>
-        <div class="hero-visual" aria-label="Complex Control product mark">
-          <div class="signal-lines" aria-hidden="true"><i></i><i></i><i></i></div>
-          <div class="brand-crop brand-hero">
-            <img src="assets/complex-control-logo.png" alt="" />
-          </div>
-          <p>Built for the timing line.</p>
-        </div>
-      </section>
-
-      <section class="system-section" id="system">
-        <div class="section-intro">
-          <p class="eyebrow">The system</p>
-          <h2>One trackside workflow.</h2>
-          <p>A UHF reader captures each kart’s tag, a Raspberry Pi processes the observation at the edge, and the operator console updates the race immediately.</p>
-        </div>
-        <div class="system-flow" aria-label="System flow">
-          <article>
-            <span>01</span>
-            <h3>Read</h3>
-            <p>The finish-line reader captures the unique RFID tag assigned to a racer.</p>
-          </article>
-          <div class="flow-arrow" aria-hidden="true">→</div>
-          <article>
-            <span>02</span>
-            <h3>Process</h3>
-            <p>The Pi timestamps, filters, and stores the observation locally at the track.</p>
-          </article>
-          <div class="flow-arrow" aria-hidden="true">→</div>
-          <article>
-            <span>03</span>
-            <h3>Control</h3>
-            <p>The race console updates laps, running order, timing, and results in real time.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="workflow-section" id="workflow">
-        <div class="workflow-panel">
-          <p class="eyebrow">Operator workflow</p>
-          <h2>Set the field. Run the race. Keep the result.</h2>
-          <div class="workflow-list">
-            <article><b>1</b><div><h3>Register racers</h3><p>Enter each racer and assign the RFID tag read by the physical system.</p></div></article>
-            <article><b>2</b><div><h3>Build the program</h3><p>Configure laps, heats, starting assignments, and advancement.</p></div></article>
-            <article><b>3</b><div><h3>Control the track</h3><p>Stage, start, pause, resume, and finish from the trackside console.</p></div></article>
-            <article><b>4</b><div><h3>Publish the order</h3><p>Follow the live leaderboard and retain the completed race results locally.</p></div></article>
-          </div>
-        </div>
-        <aside class="status-panel">
-          <div class="status-head"><span>Trackside system</span><i></i></div>
-          <strong>READY</strong>
-          <p>Designed to keep timing on site—even when public internet service is unavailable.</p>
-          <ul>
-            <li>RFID reader integration</li>
-            <li>Multi-racer timing</li>
-            <li>Flag-state race control</li>
-            <li>Live leaderboard</li>
-            <li>Saved event results</li>
-          </ul>
-        </aside>
-      </section>
-
-      <section class="track-section" id="track-testing">
-        <p class="eyebrow">Track development</p>
-        <h2>Hardware proven.<br />Track testing next.</h2>
-        <p>Complex Control has completed its first live reader-to-software proof. The next phase moves the full system to the track for timing-line calibration and race-day testing.</p>
-        <div class="track-rule" aria-hidden="true"><span></span><span></span><span></span></div>
-      </section>
-    </main>
-
-    <footer>
-      <div class="brand-crop brand-footer"><img src="assets/complex-control-logo.png" alt="Complex Control" /></div>
-      <p>Timing <i>•</i> Control <i>•</i> Results</p>
-      <small>© <span id="year">2026</span> Complex Control</small>
-    </footer>
-    <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+    <div id="root"></div>
   </body>
 </html>
