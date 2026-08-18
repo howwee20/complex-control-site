@@ -9,8 +9,70 @@
     <title>Complex Control</title>
     <script type="module" crossorigin src="/assets/index-CeBRoNe2.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DmEevroQ.css">
+    <style>
+      /* Local-only black-and-red lightning background test. */
+      :root, body, .app-shell { background-color: #050505; }
+      .app-shell {
+        background-image:
+          linear-gradient(118deg, transparent 0 35%, rgba(227, 25, 34, .9) 35.2% 35.6%, transparent 35.8% 100%),
+          linear-gradient(68deg, transparent 0 55%, rgba(165, 12, 22, .75) 55.2% 55.5%, transparent 55.7% 100%),
+          radial-gradient(ellipse at 50% 0%, rgba(147, 8, 19, .4), transparent 54%);
+        background-attachment: fixed;
+      }
+      .local-race-type { padding: 20px 24px 0; }
+      .local-race-type select { max-width: 360px; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Local-only fields for reviewing separate LCQ and main-event lap counts.
+      (() => {
+        const addLapFields = () => {
+          const fields = document.querySelector('.setup-section .event-fields');
+          if (!fields || fields.dataset.lapCountsAdded) return;
+          fields.dataset.lapCountsAdded = 'true';
+          const raceType = document.createElement('div');
+          raceType.className = 'local-race-type';
+          const raceTypeLabel = document.createElement('label');
+          const raceTypeText = document.createElement('span');
+          const raceTypeSelect = document.createElement('select');
+          raceTypeText.textContent = 'Race type';
+          [
+            ['elimination', 'Elimination racing'],
+            ['practice', 'Practice'],
+            ['time-attack', 'Time attack'],
+          ].forEach(([value, text]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = text;
+            raceTypeSelect.append(option);
+          });
+          raceTypeSelect.value = localStorage.getItem('complex-control-race-type') || 'elimination';
+          raceTypeSelect.addEventListener('change', () => localStorage.setItem('complex-control-race-type', raceTypeSelect.value));
+          raceTypeLabel.append(raceTypeText, raceTypeSelect);
+          raceType.append(raceTypeLabel);
+          fields.before(raceType);
+          [
+            ['Number of laps for LCQ', 'complex-control-lcq-laps'],
+            ['Number of laps for main event', 'complex-control-main-laps'],
+          ].forEach(([label, storageKey]) => {
+            const field = document.createElement('label');
+            const text = document.createElement('span');
+            const input = document.createElement('input');
+            text.textContent = label;
+            input.type = 'number';
+            input.min = '1';
+            input.max = '10000';
+            input.value = localStorage.getItem(storageKey) || '5';
+            input.addEventListener('input', () => localStorage.setItem(storageKey, input.value));
+            field.append(text, input);
+            fields.append(field);
+          });
+        };
+        new MutationObserver(addLapFields).observe(document.body, { childList: true, subtree: true });
+        addLapFields();
+      })();
+    </script>
   </body>
 </html>
