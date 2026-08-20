@@ -9,6 +9,7 @@
     <title>Complex Control</title>
     <script type="module" crossorigin src="/assets/index-CeBRoNe2.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DmEevroQ.css">
+    <link rel="stylesheet" href="/race-app-local.css?v=20260820-3">
     <style>
       /* Local-only black-and-red lightning background test. */
       :root, body, .app-shell { background-color: #050505; }
@@ -73,13 +74,14 @@
       .local-shop-card { border:1px solid #6d2830; border-radius:8px; padding:20px; min-height:180px; }
       .local-shop-card h2 { color:#ef3340; font:700 1.5rem var(--font-display); }
       .local-shop-card p { color:#d9cbcd; line-height:1.5; }
-      .local-shop-link { display:inline-block; margin-top:12px; }
+      .local-shop-link { display:inline-block; margin-top:12px; color:#258cff !important; font-weight:800; }
       @media (max-width:700px){.local-profile-form,.local-shop-grid{grid-template-columns:1fr}.local-page-host{padding:0 16px 50px}}
       @media (max-width:700px){.topbar{padding:0 14px;min-height:82px;height:82px}.wordmark img{width:180px!important;height:68px!important}.topbar nav button{padding:0 6px!important;font-size:.58rem!important}.local-product-copy{margin-top:42px;padding:0 18px 50px}.local-racing-page{padding:0 16px 50px}.local-racing-header{align-items:flex-start;flex-direction:column}}
     </style>
   </head>
   <body>
     <div id="root"></div>
+    <script src="/race-app-local.js?v=20260820-3" defer></script>
     <script>
       // Local-only fields for reviewing separate LCQ and main-event lap counts.
       (() => {
@@ -176,7 +178,7 @@
         const renderLogin=()=>{hideApp();host.innerHTML='<h1>Connect to system</h1><div class="local-login-card"><label><span>Connect as</span><select><option>Racer</option><option>Admin</option></select></label><label><span>PIN</span><input type="password" inputmode="numeric" placeholder="Enter PIN"></label><button type="button" onclick="this.textContent=\'Ready to connect\'">Connect</button></div>';};
         const render=page=>{if(!host){host=document.createElement('main');host.className='local-page-host';q('.app-shell').append(host)}host.style.display='block'; if(page==='home')showHome();if(page==='profiles')renderProfiles();if(page==='shop')renderShop();if(page==='login')renderLogin();if(page==='racing'){hideApp();const p=q('.local-racing-page');if(p)p.style.display='block'}};
         const wire=()=>{const nav=q('.topbar nav');if(nav&&!nav.dataset.localNav2){nav.dataset.localNav2='1';const bs=qa('button',nav); if(bs[0]){bs[0].textContent='Home';bs[0].addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();render('home')},true)} if(bs[1]){bs[1].textContent='Racer Profiles';bs[1].addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();render('profiles')},true)} if(bs[2]){bs[2].textContent="Let's Go Racing";bs[2].addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();render('racing')},true)} const shop=document.createElement('button');shop.textContent='Shop Now';shop.onclick=()=>render('shop');nav.append(shop);const login=document.createElement('button');login.textContent='Log In';login.onclick=()=>render('login');nav.append(login)} const logo=q('.wordmark');if(logo&&!logo.dataset.localHome){logo.dataset.localHome='1';logo.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();render('home')},true)} if(!host)host=document.createElement('main');};
-        const observe=()=>{wire();if(!q('.local-page-host')){host=document.createElement('main');host.className='local-page-host';q('.app-shell').append(host);host.style.display='none'}};new MutationObserver(observe).observe(document.body,{childList:true,subtree:true});observe();
+        const observe=()=>{const shell=q('.app-shell');if(!shell)return;wire();if(!q('.local-page-host')){host=document.createElement('main');host.className='local-page-host';shell.append(host);host.style.display='none'}};new MutationObserver(observe).observe(document.body,{childList:true,subtree:true});observe();
       })();
     </script>
     <script>
@@ -254,7 +256,7 @@
         const refreshList=()=>{const list=document.querySelector('#profile-list');if(!list)return;const riders=read();list.innerHTML=riders.length?'':'No racer profiles added yet.';riders.forEach((r,i)=>{const p=document.createElement('p');p.innerHTML=`<strong>${r.name}</strong> · #${r.number} · ${r.tag||'No tag'} `;const b=document.createElement('button');b.type='button';b.textContent='Delete';b.dataset.deleteProfile=i;p.append(b);list.append(p)})};
         document.addEventListener('click',e=>{if(e.target.closest('#add-profile')){const n=document.querySelector('#profile-name'),num=document.querySelector('#profile-number'),tag=document.querySelector('#profile-tag');const riders=read();riders.push({name:n?.value||'Unnamed racer',number:num?.value||'—',tag:tag?.value||''});write(riders);window.setTimeout(refreshList,0)}if(e.target.dataset.deleteProfile!==undefined){const riders=read();riders.splice(Number(e.target.dataset.deleteProfile),1);write(riders);refreshList()}} ,true);
         const enhance=()=>{refreshList();document.querySelectorAll('.local-editor-fields input').forEach(input=>{if(!/profile/i.test(input.placeholder||'')||input.dataset.profileSelect)return;input.dataset.profileSelect='1';const s=document.createElement('select');s.multiple=true;s.size=Math.min(5,Math.max(2,read().length));read().forEach(r=>{const o=document.createElement('option');o.value=r.name;o.textContent=`${r.name} (#${r.number})`;s.append(o)});input.replaceWith(s)})};
-        setInterval(enhance,400); enhance();
+        enhance();
       })();
     </script>
     <style>
@@ -278,6 +280,38 @@
     <script>
       // Local-only timer and green-light scan gate for the race-control view.
       (() => { setInterval(()=>{const state=document.querySelector('#light-state'),host=state?.parentElement;if(!state||!host||document.querySelector('#local-timer'))return;const timer=document.createElement('p');timer.id='local-timer';timer.className='local-race-help';timer.textContent='00:00.0';const scan=document.createElement('input');scan.id='local-scan';scan.placeholder='Scan RFID tag';scan.disabled=true;scan.style.cssText='display:block;width:100%;margin:12px 0;color:#fff;background:#191416;border:1px solid #6d2830;padding:10px;border-radius:6px';host.insertBefore(timer,state);host.insertBefore(scan,state);let start=Date.now();setInterval(()=>{const sec=(Date.now()-start)/1000;timer.textContent=`${String(Math.floor(sec/60)).padStart(2,'0')}:${(sec%60).toFixed(1).padStart(4,'0')}`},100);host.querySelectorAll('[data-light]').forEach(b=>b.addEventListener('click',()=>{scan.disabled=!state.textContent.includes('scanning enabled')}));scan.addEventListener('keydown',e=>{if(e.key==='Enter'&&!scan.disabled){const r=document.querySelector('#local-results');r.innerHTML+=`<p>${scan.value} · scanned at ${timer.textContent}</p>`;scan.value=''}})},300); })();
+    </script>
+    <style>
+      /* Local-only authentication and confirmation refinements. */
+      .topbar nav button { color:#050505 !important; }
+      .topbar nav button.local-active { color:#df1728 !important; border-bottom-color:#df1728 !important; }
+      .topbar nav button:hover { color:#df1728 !important; }
+      [data-confirm-delete] { color:#f13a48 !important; background:transparent !important; border:1px solid #f13a48 !important; padding:5px 9px !important; }
+      .local-confirm-bubble { position:fixed; z-index:1000; inset:0; display:grid; place-items:center; background:#0009; }
+      .local-confirm-card { width:min(420px,calc(100% - 32px)); color:#eee; background:#111; border:1px solid #d52836; border-radius:10px; padding:24px; box-shadow:0 20px 80px #000; }
+      .local-confirm-card p { margin:0 0 18px; }
+      .local-confirm-card div { display:flex; gap:10px; }
+      .local-confirm-card button { color:#fff; background:#c11e2d; border:0; border-radius:5px; padding:9px 16px; }
+    </style>
+    <script>
+      // Local-only temporary login gate and page-behavior corrections.
+      (() => {
+        const authKey='complex-control-local-session', profilesKey='complex-control-racer-profiles';
+        const q=(s,r=document)=>r.querySelector(s), qa=(s,r=document)=>[...r.querySelectorAll(s)];
+        const navButton=label=>qa('.topbar nav button').find(b=>b.textContent.trim()===label);
+        const session=()=>{try{return JSON.parse(localStorage.getItem(authKey)||'null')}catch{return null}};
+        const hideContent=()=>qa('.product-shell,.local-product-copy,.local-racing-page,.setup-shell,.preview-banner').forEach(x=>x.style.display='none');
+        const host=()=>{let h=q('.local-page-host');if(!h){h=document.createElement('main');h.className='local-page-host';q('.app-shell')?.append(h)}h.style.display='block';return h};
+        const active=label=>qa('.topbar nav button').forEach(b=>b.classList.toggle('local-active',b.textContent.trim()===label));
+        const showLogin=()=>{hideContent();active('Log In');const h=host();h.innerHTML='<h1>Connect to system</h1><div class="local-login-card"><label><span>Connect as</span><select id="gate-role"><option>Racer</option><option>Admin</option></select></label><label><span>PIN</span><input id="gate-pin" type="password" placeholder="Enter any PIN"></label><button id="gate-login" type="button">Log In</button><p class="local-race-help">Any non-empty PIN works during this local test.</p></div>';q('#gate-login').onclick=()=>{const pin=q('#gate-pin').value;if(!pin)return;localStorage.setItem(authKey,JSON.stringify({role:q('#gate-role').value}));syncAuth();showHome()}};
+        const showHome=()=>{hideContent();const h=q('.local-page-host');if(h)h.style.display='none';const copy=q('.local-product-copy');if(copy)copy.style.display='block';active('Home')};
+        const syncAuth=()=>{const s=session(),profiles=navButton('Racer Profiles'),racing=navButton("Let's Go Racing"),login=navButton('Log In')||navButton('Log Out');if(profiles)profiles.style.display=s?'':'none';if(racing)racing.style.display=s?'':'none';if(login)login.textContent=s?'Log Out':'Log In'};
+        document.addEventListener('click',e=>{const b=e.target.closest('.topbar nav button');if(!b)return;const label=b.textContent.trim();if(label==='Log In'){e.preventDefault();e.stopImmediatePropagation();showLogin()}if(label==='Log Out'){e.preventDefault();e.stopImmediatePropagation();localStorage.removeItem(authKey);syncAuth();showHome()}if((label==='Racer Profiles'||label==="Let's Go Racing")&&!session()){e.preventDefault();e.stopImmediatePropagation();showLogin();return}if(label==='Racer Profiles')window.setTimeout(()=>{qa('.local-racing-page').forEach(x=>x.style.display='none');active('Racer Profiles')},0);if(label==="Let's Go Racing")window.setTimeout(()=>{const h=q('.local-page-host');if(h)h.style.display='none';active("Let's Go Racing")},0);if(label==='Home')window.setTimeout(showHome,0)},true);
+        document.addEventListener('change',e=>{if(!e.target.matches('.local-racer-checks input[type=checkbox]'))return;const count=qa('.local-racer-checks input:checked').length;qa('.local-editor-fields label').forEach(l=>{if(/number of racers/i.test(l.innerText)){const i=q('input',l);if(i){i.value=Math.max(1,count);i.readOnly=true}}})});
+        const enhance=()=>{const slogan=q('.local-product-copy h2');if(slogan)slogan.textContent='Complex Control offers a transponder system for multiple racing platforms for a competitive price!';qa('#profile-list button[data-delete-profile]').forEach(b=>{b.dataset.confirmDelete=b.dataset.deleteProfile;delete b.dataset.deleteProfile;b.textContent='Delete'});syncAuth()};
+        document.addEventListener('click',e=>{const b=e.target.closest('[data-confirm-delete]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const index=Number(b.dataset.confirmDelete),overlay=document.createElement('div');overlay.className='local-confirm-bubble';overlay.innerHTML='<div class="local-confirm-card"><p>Are you sure you would like to delete race?</p><div><button data-answer="yes">Yes</button><button data-answer="no">No</button></div></div>';overlay.onclick=event=>{const answer=event.target.dataset.answer;if(answer==='no')overlay.remove();if(answer==='yes'){let riders=[];try{riders=JSON.parse(localStorage.getItem(profilesKey)||'[]')}catch{}riders.splice(index,1);localStorage.setItem(profilesKey,JSON.stringify(riders));overlay.remove();const list=q('#profile-list');if(list)list.innerHTML='';}};document.body.append(overlay)},true);
+        setInterval(enhance,300);enhance();
+      })();
     </script>
   </body>
 </html>
