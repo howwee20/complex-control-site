@@ -9,7 +9,7 @@
     <title>Complex Control</title>
     <script type="module" crossorigin src="/assets/index-CeBRoNe2.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DmEevroQ.css">
-    <link rel="stylesheet" href="/race-app-local.css?v=20260821-31">
+    <link rel="stylesheet" href="/race-app-local.css?v=20260823-44">
     <style>
       /* Local-only black-and-red lightning background test. */
       :root, body, .app-shell { background-color: #050505; }
@@ -81,7 +81,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script src="/race-app-local.js?v=20260821-31" defer></script>
+    <script src="/race-app-local.js?v=20260823-44" defer></script>
     <script>
       // Local-only fields for reviewing separate LCQ and main-event lap counts.
       (() => {
@@ -204,8 +204,6 @@
           if (event.target.closest('#add-profile')) window.setTimeout(() => ['#profile-name','#profile-number','#profile-tag'].forEach(s => { const el=document.querySelector(s); if(el) el.value=''; }), 0);
         }, true);
         setActive('Home');
-        const addNoPin = () => { const card=document.querySelector('.local-login-card'); if(card&&!document.querySelector('#local-continue-racing')) { const b=document.createElement('button'); b.id='local-continue-racing'; b.type='button'; b.textContent='Continue to Let\'s Go Racing without PIN'; b.onclick=()=>document.querySelector('.topbar nav button') && [...document.querySelectorAll('.topbar nav button')].find(x=>x.textContent.trim()==="Let's Go Racing")?.click(); card.append(b); } };
-        new MutationObserver(addNoPin).observe(document.body,{childList:true,subtree:true}); addNoPin();
       })();
     </script>
     <script>
