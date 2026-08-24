@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -9,7 +9,7 @@
     <title>Complex Control</title>
     <script type="module" crossorigin src="/assets/index-CeBRoNe2.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DmEevroQ.css">
-    <link rel="stylesheet" href="/race-app-local.css?v=20260823-66">
+    <link rel="stylesheet" href="/race-app-local.css?v=20260824-103">
     <style>
       /* Local-only black-and-red lightning background test. */
       :root, body, .app-shell { background-color: #050505; }
@@ -81,8 +81,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script src="/race-app-local.js?v=20260823-66" defer></script>
-    <script src="/field-controller-link.js?v=20260824-1" defer></script>
+    <script src="/race-app-local.js?v=20260824-103" defer></script>
     <script>
       // Local-only fields for reviewing separate LCQ and main-event lap counts.
       (() => {
@@ -302,7 +301,7 @@
         const hideContent=()=>qa('.product-shell,.local-product-copy,.local-racing-page,.setup-shell,.preview-banner').forEach(x=>x.style.display='none');
         const host=()=>{let h=q('.local-page-host');if(!h){h=document.createElement('main');h.className='local-page-host';q('.app-shell')?.append(h)}h.style.display='block';return h};
         const active=label=>qa('.topbar nav button').forEach(b=>b.classList.toggle('local-active',b.textContent.trim()===label));
-        const showLogin=()=>{hideContent();active('Log In');const h=host();h.innerHTML='<h1>Connect to system</h1><div class="local-login-card"><label><span>Connect as</span><select id="gate-role"><option>Racer</option><option>Admin</option></select></label><label><span>PIN</span><input id="gate-pin" type="password" placeholder="Enter any PIN"></label><button id="gate-login" type="button">Log In</button><p class="local-race-help">Any non-empty PIN works during this local test.</p></div>';q('#gate-login').onclick=()=>{const pin=q('#gate-pin').value;if(!pin)return;localStorage.setItem(authKey,JSON.stringify({role:q('#gate-role').value}));syncAuth();showHome()}};
+        const showLogin=()=>{hideContent();active('Log In');const h=host();h.innerHTML='<h1>Connect to system</h1><div class="local-login-card"><label><span>Connect as</span><select id="gate-role"><option>Racer</option><option>Admin</option><option>Simulator Mode</option></select></label><label><span>PIN</span><input id="gate-pin" type="password" placeholder="Enter any PIN"></label><button id="gate-login" type="button">Log In</button><p class="local-race-help">Any non-empty PIN works during this local test.</p></div>';q('#gate-login').onclick=()=>{const pin=q('#gate-pin').value;if(!pin)return;localStorage.setItem(authKey,JSON.stringify({role:q('#gate-role').value}));syncAuth();showHome()}};
         const showHome=()=>{hideContent();const h=q('.local-page-host');if(h)h.style.display='none';const copy=q('.local-product-copy');if(copy)copy.style.display='block';active('Home')};
         const syncAuth=()=>{const s=session(),profiles=navButton('Racer Profiles'),racing=navButton("Let's Go Racing"),login=navButton('Log In')||navButton('Log Out');if(profiles)profiles.style.display=s?'':'none';if(racing)racing.style.display=s?'':'none';if(login)login.textContent=s?'Log Out':'Log In'};
         document.addEventListener('click',e=>{const b=e.target.closest('.topbar nav button');if(!b)return;const label=b.textContent.trim();if(label==='Log In'){e.preventDefault();e.stopImmediatePropagation();showLogin()}if(label==='Log Out'){e.preventDefault();e.stopImmediatePropagation();localStorage.removeItem(authKey);syncAuth();showHome()}if((label==='Racer Profiles'||label==="Let's Go Racing")&&!session()){e.preventDefault();e.stopImmediatePropagation();showLogin();return}if(label==='Racer Profiles')window.setTimeout(()=>{qa('.local-racing-page').forEach(x=>x.style.display='none');active('Racer Profiles')},0);if(label==="Let's Go Racing")window.setTimeout(()=>{const h=q('.local-page-host');if(h)h.style.display='none';active("Let's Go Racing")},0);if(label==='Home')window.setTimeout(showHome,0)},true);
@@ -317,5 +316,26 @@
       .topbar, .home-page .topbar { background:#d4d4d4 !important; }
       .topbar::after { background:repeating-conic-gradient(#f5f5f5 0 25%, #191919 0 50%) 0/20px 20px !important; }
     </style>
+    <script>
+      // Display the new name while retaining the saved race-type value and its behavior.
+      (() => {
+        const relabel = () => {
+          document.querySelectorAll('option').forEach((option) => {
+            if (option.textContent.trim() === 'Last man standing') option.textContent = 'Knockout Challenge';
+          });
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = walker.nextNode())) {
+            const parent = node.parentElement;
+            if (parent && !['SCRIPT', 'STYLE'].includes(parent.tagName) && node.nodeValue.includes('Last man standing')) {
+              node.nodeValue = node.nodeValue.replaceAll('Last man standing', 'Knockout Challenge');
+            }
+          }
+        };
+        relabel();
+        new MutationObserver(relabel).observe(document.documentElement, { childList: true, subtree: true });
+      })();
+    </script>
   </body>
 </html>
+
