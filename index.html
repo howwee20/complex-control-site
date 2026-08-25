@@ -392,9 +392,12 @@
           const host = document.querySelector('#race-v2-host');
           if (host) {
             const heading = host.querySelector(':scope > h1');
-            if (heading && heading.textContent !== 'Race Control Center') heading.textContent = 'Race Control Center';
             let race;
             try { race = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]').find((item) => item.id === host.dataset.raceId); } catch (_) {}
+            if (heading && race && heading.textContent !== 'Race Control Center · ' + race.name) heading.textContent = 'Race Control Center · ' + race.name;
+            host.querySelectorAll('#v2-final-panel h2').forEach((finalHeading) => {
+              if (race && finalHeading.textContent !== 'Final Results · ' + race.name) finalHeading.textContent = 'Final Results · ' + race.name;
+            });
             const activeStatus = document.querySelector('#v2-status')?.textContent.trim();
             const locked = ['GREEN', 'YELLOW'].includes(activeStatus);
             const schedule = document.querySelector('#v2-schedule');
