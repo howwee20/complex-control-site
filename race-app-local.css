@@ -94,4 +94,5 @@ body:not([data-race-page="true"]) #race-v2-host,body:not([data-race-page="true"]
 .local-home-story-hero{background:linear-gradient(95deg,#6f0c16 3%,#e22b3d 34%,#ff6874 52%,#bd1829 72%,#5c0912 97%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .race-v2-barrel-classic-score{display:block;margin-top:7px;color:#d9d9d9;font-size:.88rem;line-height:1.35;font-weight:400}
 .race-v2-field input:disabled{opacity:.6;cursor:not-allowed;background:#242424;color:#aaa}
+.local-product-copy.local-home-story-active{margin-top:-92px!important}.local-home-story-hero{font-size:clamp(2rem,5vw,4.8rem)!important;line-height:.88!important}@media(max-width:700px){.local-product-copy.local-home-story-active{margin-top:-92px!important}.local-home-story-hero{font-size:clamp(2rem,5vw,4.8rem)!important}}
 
