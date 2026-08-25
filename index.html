@@ -317,6 +317,127 @@
       .topbar::after { background:repeating-conic-gradient(#f5f5f5 0 25%, #191919 0 50%) 0/20px 20px !important; }
     </style>
     <script>
+      // Race-completion follow-up controls.
+      (() => {
+        const style = document.createElement('style');
+        style.textContent = `
+          .race-v2-save-next { animation: race-v2-white-glow 1.35s ease-in-out infinite alternate; }
+          @keyframes race-v2-white-glow { from { box-shadow: 0 0 3px #fff; } to { box-shadow: 0 0 20px 7px #fff, 0 0 34px 11px #8bbcff; } }
+          .race-v2-lead-lap-control { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin:10px 0 2px; color:#eee; }
+          .race-v2-lead-lap-control strong { color:#ffe566; }
+          .race-v2-lead-lap-control input { width:78px; padding:8px; color:#fff; background:#171717; border:1px solid #777; border-radius:5px; text-align:center; }
+          .race-v2-schedule-locked { opacity:.6; pointer-events:none; }
+          .race-v2-starting-order { display:block; margin-top:8px; color:#72b7ff; font-weight:700; }
+        `;
+        document.head.append(style);
+        const enhance = () => {
+          document.querySelectorAll('#v2-schedule .race-v2-button').forEach((button) => {
+            if (button.textContent.trim() === 'Race Complete') {
+              button.disabled = false;
+              button.title = 'Open this completed race to review and change its order or bracket positions.';
+            }
+          });
+          const raceSelect = document.querySelector('#v2-current-race');
+          const deleteRace = document.querySelector('#v2-delete-race');
+          if (raceSelect && deleteRace) {
+            const syncDelete = () => {
+              try {
+                const races = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]');
+                const race = races.find((item) => item.id === raceSelect.value);
+                const complete = race && (race.schedule || []).length && (race.schedule || []).every((stage) => stage.completed || (race.results || []).some((result) => result.stage === stage.name));
+                if (complete) {
+                  deleteRace.disabled = true;
+                  deleteRace.title = 'Completed races are retained for results and reporting.';
+                }
+              } catch (_) { /* Keep the app's normal controls if race data is unavailable. */ }
+            };
+            raceSelect.addEventListener('change', syncDelete);
+            syncDelete();
+          }
+          const type = document.querySelector('#v2-type');
+          const lapping = document.querySelector('#v2-enable-lapping');
+          const lappingToggle = document.querySelector('.race-v2-lapping-toggle');
+          const lappingNote = document.querySelector('#v2-lapping-enabled-note');
+          const syncLapping = () => {
+            if (!type || !lapping || !lappingToggle) return;
+            const team = ['Team Race', 'Team relay'].includes(type.value);
+            const practice = ['Qualifying/Practice', 'Practice'].includes(type.value);
+            if (team || practice) lapping.checked = true;
+            lappingToggle.hidden = practice;
+            if (practice && !lappingNote) {
+              const note = document.createElement('p');
+              note.id = 'v2-lapping-enabled-note';
+              note.className = 'race-v2-empty';
+              note.textContent = 'Lapping is Enabled.';
+              lappingToggle.after(note);
+            } else if (!practice && lappingNote) lappingNote.remove();
+          };
+          if (type && !type.dataset.lappingRulesWired) {
+            type.dataset.lappingRulesWired = 'true';
+            type.addEventListener('change', () => setTimeout(syncLapping, 0));
+          }
+          syncLapping();
+          const host = document.querySelector('#race-v2-host');
+          if (host) {
+            const heading = host.querySelector(':scope > h1');
+            if (heading && heading.textContent !== 'Race Control Center') heading.textContent = 'Race Control Center';
+            let race;
+            try { race = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]').find((item) => item.id === host.dataset.raceId); } catch (_) {}
+            const activeStatus = document.querySelector('#v2-status')?.textContent.trim();
+            const locked = ['GREEN', 'YELLOW'].includes(activeStatus);
+            const schedule = document.querySelector('#v2-schedule');
+            if (schedule) {
+              schedule.classList.toggle('race-v2-schedule-locked', locked);
+              schedule.querySelectorAll('.race-v2-heat').forEach((card, index) => {
+                if (card.querySelector('.race-v2-starting-order') || !race?.schedule?.[index]) return;
+                const racers = race.schedule[index].racers || [];
+                if (!racers.length) return;
+                const positions = racers.map((racer, place) => 'P' + (place + 1) + ' ' + racer.name).join(' · ');
+                const order = document.createElement('small');
+                order.className = 'race-v2-starting-order';
+                order.textContent = 'Starting order: ' + positions;
+                card.append(order);
+              });
+            }
+          }
+          const save = document.querySelector('#v2-save-sim-edits');
+          if (save) {
+            save.classList.add('race-v2-save-next');
+          }
+          const lead = document.querySelector('#v2-return-lead-lap');
+          if (lead && !lead.dataset.leadLapEnhanced) {
+            lead.dataset.leadLapEnhanced = 'true';
+            const control = document.createElement('div');
+            control.className = 'race-v2-lead-lap-control';
+            control.innerHTML = '<span>Current lead lap: <strong data-current-lead-lap>0</strong></span><label>Change to <input type="number" min="0" step="1" value="0"></label>';
+            const input = control.querySelector('input');
+            const current = control.querySelector('[data-current-lead-lap]');
+            const refreshLap = () => {
+              const laps = [...document.querySelectorAll('#v2-live-results')].flatMap((node) => [...node.textContent.matchAll(/Lap\\s+(\\d+)/g)].map((match) => Number(match[1])));
+              const simulatorLap = typeof window.raceV2CurrentLeadLap === 'function' ? window.raceV2CurrentLeadLap() : 0;
+              const lap = simulatorLap || (laps.length ? Math.max(...laps) : 0);
+              current.textContent = String(lap);
+              if (!input.dataset.changed) input.value = String(lap);
+            };
+            refreshLap();
+            new MutationObserver(refreshLap).observe(document.querySelector('#v2-live-results') || document.body, { childList:true, subtree:true, characterData:true });
+            lead.before(control);
+            lead.textContent = 'Change Lead Lap';
+            lead.onclick = (event) => {
+              const next = Number(input.value);
+              if (!Number.isInteger(next) || next < 0) return;
+              if (!window.confirm('Are you sure you would like to change the lead lap to ' + next + '?')) return;
+              input.dataset.changed = 'true';
+              current.textContent = String(next);
+              if (typeof window.raceV2SetLeadLap === 'function') window.raceV2SetLeadLap(next);
+            };
+          }
+        };
+        new MutationObserver(enhance).observe(document.body, { childList:true, subtree:true });
+        enhance();
+      })();
+    </script>
+    <script>
       // Display the new name while retaining the saved race-type value and its behavior.
       (() => {
         const relabel = () => {
