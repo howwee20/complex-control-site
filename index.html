@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0c1117" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Complex Control" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/cc-logo-mobile.jfif" />
     <meta name="description" content="Complex Control race timing and event operations" />
     <link rel="icon" type="image/png" href="/complex-control-logo-red-light.png" />
     <title>Complex Control</title>
@@ -359,9 +364,13 @@
           const lappingToggle = document.querySelector('.race-v2-lapping-toggle');
           const lappingNote = document.querySelector('#v2-lapping-enabled-note');
           const syncLapping = () => {
-            if (!type || !lapping || !lappingToggle) return;
+            if (!type) return;
             const team = ['Team Race', 'Team relay'].includes(type.value);
             const practice = ['Qualifying/Practice', 'Practice'].includes(type.value);
+            if (!lapping || !lappingToggle) {
+              if (!practice) document.querySelectorAll('#v2-lapping-enabled-note').forEach((note) => note.remove());
+              return;
+            }
             if (team || practice) lapping.checked = true;
             lappingToggle.hidden = practice;
             if (practice && !lappingNote) {
@@ -371,6 +380,9 @@
               note.textContent = 'Lapping is Enabled.';
               lappingToggle.after(note);
             } else if (!practice && lappingNote) lappingNote.remove();
+            document.querySelectorAll('#v2-lapping-enabled-note').forEach((note, index) => {
+              if (index) note.remove();
+            });
           };
           if (type && !type.dataset.lappingRulesWired) {
             type.dataset.lappingRulesWired = 'true';
