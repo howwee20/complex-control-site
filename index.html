@@ -350,9 +350,14 @@
                 const races = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]');
                 const race = races.find((item) => item.id === raceSelect.value);
                 const complete = race && (race.schedule || []).length && (race.schedule || []).every((stage) => stage.completed || (race.results || []).some((result) => result.stage === stage.name));
-                if (complete) {
+                const session = JSON.parse(localStorage.getItem('complex-control-local-session') || 'null');
+                const simulator = String(session?.role || session?.profile || session?.type || '').trim().toLowerCase() === 'simulator mode';
+                if (complete && !simulator) {
                   deleteRace.disabled = true;
                   deleteRace.title = 'Completed races are retained for results and reporting.';
+                } else if (simulator) {
+                  deleteRace.disabled = !raceSelect.value;
+                  deleteRace.title = 'Simulator Mode can delete the selected race.';
                 }
               } catch (_) { /* Keep the app's normal controls if race data is unavailable. */ }
             };
@@ -395,6 +400,16 @@
             let race;
             try { race = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]').find((item) => item.id === host.dataset.raceId); } catch (_) {}
             if (heading && race && heading.textContent !== 'Race Control Center · ' + race.name) heading.textContent = 'Race Control Center · ' + race.name;
+            if (heading && String(race?.name || '').trim() && race?.location) {
+              let location = host.querySelector('#v2-race-location-display');
+              if (!location) {
+                location = document.createElement('p');
+                location.id = 'v2-race-location-display';
+                location.className = 'race-v2-race-location';
+                heading.before(location);
+              }
+              location.textContent = 'Location: ' + race.location;
+            }
             host.querySelectorAll('#v2-final-panel h2').forEach((finalHeading) => {
               if (race && finalHeading.textContent !== 'Final Results · ' + race.name) finalHeading.textContent = 'Final Results · ' + race.name;
             });
@@ -450,6 +465,77 @@
         };
         new MutationObserver(enhance).observe(document.body, { childList:true, subtree:true });
         enhance();
+      })();
+    </script>
+    <script>
+      // Additional local race setup options.
+      (() => {
+        const setup = () => {
+          const nav = document.querySelector('.topbar nav');
+          if (nav && !nav.querySelector('[data-simulator-mode]')) {
+            const button = document.createElement('button');
+            button.type = 'button'; button.dataset.simulatorMode = 'true'; button.textContent = 'Simulator Mode';
+            const profiles = [...nav.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Racer Profiles');
+            profiles ? nav.insertBefore(button, profiles) : nav.append(button);
+            button.onclick = () => { localStorage.setItem('complex-control-local-session', JSON.stringify({ role: 'Simulator Mode' })); [...nav.querySelectorAll('button')].find((item) => item.textContent.trim() === "Let's Go Racing")?.click(); };
+          }
+          const name = document.querySelector('#v2-name');
+          if (name && !document.querySelector('#v2-location')) {
+            const label = document.createElement('label'); label.className = 'race-v2-field';
+            label.innerHTML = '<span>Race location (optional)</span><input id="v2-location" type="text" placeholder="Enter race location">';
+            name.closest('.race-v2-grid')?.append(label);
+          }
+          const type = document.querySelector('#v2-type');
+          if (type && !document.querySelector('#v2-skip-first-green')) {
+            const label = document.createElement('label'); label.className = 'race-v2-checkbox';
+            label.innerHTML = '<input id="v2-skip-first-green" type="checkbox" checked> Skip one lap on every first green flag';
+            type.closest('.race-v2-field')?.after(label);
+            const sync = () => {
+              const barrel = type.value === 'Barrel Racing';
+              label.hidden = barrel;
+              if (barrel) label.querySelector('input').checked = false;
+            };
+            type.addEventListener('change', sync); sync();
+          }
+          const form = document.querySelector('.local-profile-form');
+          if (form && !document.querySelector('#allow-duplicate-numbers')) {
+            const label = document.createElement('label'); label.innerHTML = '<span>Duplicate numbers</span><select id="allow-duplicate-numbers"><option value="no">Do not allow</option><option value="yes">Allow duplicate numbers</option></select>';
+            form.insertBefore(label, form.querySelector('#add-profile'));
+          }
+          const profileAdd = document.querySelector('#add-profile');
+          if (form && profileAdd && !profileAdd.dataset.uniqueProfileWired) {
+            profileAdd.dataset.uniqueProfileWired = 'true';
+            const validate = () => {
+              const profileName = document.querySelector('#profile-name')?.value.trim().toLowerCase();
+              const profileNumber = document.querySelector('#profile-number')?.value.trim();
+              const riders = JSON.parse(localStorage.getItem('complex-control-racer-profiles') || '[]');
+              const nameTaken = profileName && riders.some((rider) => String(rider.name || '').trim().toLowerCase() === profileName);
+              const numberTaken = profileNumber && document.querySelector('#allow-duplicate-numbers')?.value !== 'yes' && riders.some((rider) => String(rider.number) === profileNumber);
+              profileAdd.disabled = !!(nameTaken || numberTaken);
+            };
+            document.querySelector('#profile-name')?.addEventListener('input', validate);
+            document.querySelector('#profile-number')?.addEventListener('input', validate);
+            document.querySelector('#allow-duplicate-numbers')?.addEventListener('change', validate);
+          }
+        };
+        document.addEventListener('click', (event) => {
+          const add = event.target.closest('#add-profile');
+          if (add) {
+            const name = document.querySelector('#profile-name')?.value.trim().toLowerCase();
+            const number = document.querySelector('#profile-number')?.value.trim();
+            const riders = JSON.parse(localStorage.getItem('complex-control-racer-profiles') || '[]');
+            if (name && riders.some((rider) => String(rider.name || '').trim().toLowerCase() === name)) { event.preventDefault(); event.stopImmediatePropagation(); alert('A racer profile with this name already exists.'); return; }
+            if (number && document.querySelector('#allow-duplicate-numbers')?.value !== 'yes' && riders.some((rider) => String(rider.number) === number)) { event.preventDefault(); event.stopImmediatePropagation(); alert('That racer number is already in use. Enable duplicate numbers to continue.'); }
+          }
+          const create = event.target.closest('#v2-create');
+          const location = create ? document.querySelector('#v2-location')?.value.trim() : '', barrel = create && document.querySelector('#v2-type')?.value === 'Barrel Racing', skip = !barrel && !!document.querySelector('#v2-skip-first-green')?.checked;
+          if (create) setTimeout(() => {
+            if (!location && !skip) return;
+            const races = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]'); const latest = races.at(-1);
+            if (latest) { latest.location = location || ''; latest.configuration = latest.configuration || {}; latest.configuration.skipFirstLap = skip; localStorage.setItem('complex-control-created-races-v2', JSON.stringify(races)); }
+          }, 0);
+        }, true);
+        new MutationObserver(setup).observe(document.body, { childList: true, subtree: true }); setup();
       })();
     </script>
     <script>
