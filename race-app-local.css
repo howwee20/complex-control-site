@@ -57,6 +57,7 @@ body:not([data-race-page="true"]) #race-v2-host,body:not([data-race-page="true"]
 .race-v2-nav{color:#050505!important}
 .race-v2-nav.active{color:#df1728!important;border-bottom-color:#df1728!important}
 .race-v2-empty{color:#aaa;padding:12px 0}
+.race-v2-race-location{margin:0 0 4px;color:#ffe566;font-size:1.05rem;font-weight:800;letter-spacing:.03em}
 .race-v2-current-row{display:grid;grid-template-columns:minmax(220px,1fr) auto auto auto auto;gap:10px;align-items:center}
 .race-v2-current-row select{color:#fff;background:#1a1516;border:1px solid #71303a;border-radius:6px;padding:11px}
 .race-v2-delete-button{background:#77141d}
