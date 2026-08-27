@@ -31,9 +31,13 @@ export interface EventCreate {
   location?: string | null;
   format: RaceFormat;
   target_laps: number;
+  heat_laps: number;
+  lcq_laps: number;
+  main_laps: number;
   heat_count: number;
   advance_count: number;
   lcq_enabled: boolean;
+  lcq_count: number;
   lcq_advance_count: number;
   invert_main: boolean;
   formation_lap_on_start: boolean;
@@ -42,6 +46,12 @@ export interface EventCreate {
   duplicate_window_ms: number;
   randomize_grid: boolean;
   racers: EntrantInput[];
+}
+
+export interface RacerProfile extends EntrantInput {
+  id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EntrantStanding extends EntrantInput {
@@ -121,9 +131,13 @@ export interface EventSnapshot {
   format: RaceFormat;
   status: EventStatus;
   target_laps: number;
+  heat_laps: number;
+  lcq_laps: number;
+  main_laps: number;
   heat_count: number;
   advance_count: number;
   lcq_enabled: boolean;
+  lcq_count: number;
   lcq_advance_count: number;
   invert_main: boolean;
   formation_lap_on_start: boolean;

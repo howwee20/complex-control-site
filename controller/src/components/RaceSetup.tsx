@@ -1,82 +1,97 @@
 import { useEffect, useMemo, useState } from "react";
-import type { EntrantInput, EventCreate, EventView, RaceFormat } from "../types";
+import type { EntrantInput, EventCreate, EventSummary, EventView, RaceFormat, RacerProfile } from "../types";
 
 interface Props {
   busy: boolean;
   readerEvent: EventView | null;
+  profiles: RacerProfile[];
+  savedEvents: EventSummary[];
   onCreate: (event: EventCreate) => Promise<void>;
+  onOpen: (eventId: string) => Promise<void>;
+  onDuplicate: (eventId: string) => Promise<void>;
+  onDelete: (eventId: string) => Promise<void>;
+  onDeleteAll: () => Promise<void>;
 }
 
-const blankRacer = (): EntrantInput => ({
-  driver_name: "",
-  kart_number: "",
-  tag_id: "",
-  heat_number: 1,
-});
+const blankRacer = (): EntrantInput => ({ driver_name: "", kart_number: "", tag_id: "", heat_number: 1 });
 
-const formats: Array<{ value: RaceFormat; label: string }> = [
-  { value: "HEATS", label: "Heats and main" },
-  { value: "HEADS_UP", label: "Heads-up bracket" },
-  { value: "SINGLE_ELIMINATION", label: "Single elimination" },
-  { value: "DOUBLE_ELIMINATION", label: "Double elimination" },
+const formats: Array<{ value: RaceFormat; label: string; detail: string }> = [
+  { value: "HEATS", label: "Double Elimination", detail: "Heats qualify racers for the Main; remaining racers get a final chance through the LCQ." },
+  { value: "SINGLE_ELIMINATION", label: "Single Elimination", detail: "One loss eliminates a racer; winners advance until the final." },
+  { value: "DOUBLE_ELIMINATION", label: "Double-Elimination Bracket", detail: "Two losses eliminate a racer through winners and losers brackets." },
+  { value: "HEADS_UP", label: "Heads-Up Bracket", detail: "Two-racer matches advance winners through a direct bracket." },
 ];
 
-export function RaceSetup({ busy, readerEvent, onCreate }: Props) {
+export function RaceSetup({ busy, readerEvent, profiles, savedEvents, onCreate, onOpen, onDuplicate, onDelete, onDeleteAll }: Props) {
+  const [selectedSaved, setSelectedSaved] = useState("");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [format, setFormat] = useState<RaceFormat>("HEATS");
-  const [targetLaps, setTargetLaps] = useState(5);
-  const [heatCount, setHeatCount] = useState(2);
+  const [heatLaps, setHeatLaps] = useState(5);
+  const [lcqLaps, setLcqLaps] = useState(5);
+  const [mainLaps, setMainLaps] = useState(10);
+  const [heatCount, setHeatCount] = useState(1);
   const [advanceCount, setAdvanceCount] = useState(1);
-  const [lcqEnabled, setLcqEnabled] = useState(false);
+  const [lcqCount, setLcqCount] = useState(1);
   const [lcqAdvanceCount, setLcqAdvanceCount] = useState(1);
   const [duplicateWindow, setDuplicateWindow] = useState(3000);
-  const [invertMain, setInvertMain] = useState(false);
+  const [invertMain, setInvertMain] = useState(true);
   const [formationStart, setFormationStart] = useState(true);
   const [formationRestart, setFormationRestart] = useState(false);
   const [cautionSync, setCautionSync] = useState(true);
   const [randomizeGrid, setRandomizeGrid] = useState(false);
-  const [racers, setRacers] = useState<EntrantInput[]>([
-    { driver_name: "Driver 1", kart_number: "1", tag_id: "", heat_number: 1 },
-  ]);
-  const [scanTarget, setScanTarget] = useState<{ index: number; afterId: string | null } | null>(
-    null,
-  );
+  const [selectedProfiles, setSelectedProfiles] = useState<Set<string>>(new Set());
+  const [raceDayRacers, setRaceDayRacers] = useState<EntrantInput[]>([]);
+  const [scanTarget, setScanTarget] = useState<{ index: number; afterId: string | null } | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const updateRacer = (
-    index: number,
-    field: keyof EntrantInput,
-    value: string | number | null,
-  ) => {
-    setRacers((current) =>
-      current.map((racer, racerIndex) =>
-        racerIndex === index ? { ...racer, [field]: value } : racer,
-      ),
-    );
+  const updateRaceDayRacer = (index: number, field: keyof EntrantInput, value: string | number | null) => {
+    setRaceDayRacers((current) => current.map((racer, racerIndex) => racerIndex === index ? { ...racer, [field]: value } : racer));
   };
 
   useEffect(() => {
     if (!scanTarget || !readerEvent || readerEvent.id === scanTarget.afterId) return;
-    updateRacer(scanTarget.index, "tag_id", readerEvent.tag_id);
+    updateRaceDayRacer(scanTarget.index, "tag_id", readerEvent.tag_id);
     setScanTarget(null);
   }, [readerEvent?.id, scanTarget]);
 
+  const racers = useMemo(() => {
+    const registered = profiles
+      .filter((profile) => selectedProfiles.has(profile.id))
+      .map((profile, index) => ({
+        driver_name: profile.driver_name,
+        kart_number: profile.kart_number,
+        tag_id: profile.tag_id,
+        heat_number: (index % Math.max(1, heatCount)) + 1,
+      }));
+    return [...registered, ...raceDayRacers];
+  }, [profiles, selectedProfiles, raceDayRacers, heatCount]);
+
   const estimatedRaces = useMemo(() => {
-    if (format === "HEATS") return Math.min(heatCount, racers.length) + 1 + (lcqEnabled ? 1 : 0);
+    if (format === "HEATS") return Math.min(heatCount, Math.max(1, racers.length)) + lcqCount + 1;
     if (format === "DOUBLE_ELIMINATION") return Math.max(1, racers.length * 2 - 1);
     return Math.max(1, racers.length - 1);
-  }, [format, heatCount, lcqEnabled, racers.length]);
+  }, [format, heatCount, lcqCount, racers.length]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setFormError(null);
+    if (racers.length === 0) {
+      setFormError("Select at least one registered racer or add a race-day racer.");
+      return;
+    }
     await onCreate({
       name,
       location: location.trim() || null,
       format,
-      target_laps: targetLaps,
+      target_laps: mainLaps,
+      heat_laps: heatLaps,
+      lcq_laps: lcqLaps,
+      main_laps: mainLaps,
       heat_count: format === "HEATS" ? heatCount : 1,
       advance_count: format === "HEATS" ? advanceCount : 1,
-      lcq_enabled: format === "HEATS" && lcqEnabled,
+      lcq_enabled: format === "HEATS" && lcqCount > 0,
+      lcq_count: format === "HEATS" ? lcqCount : 1,
       lcq_advance_count: format === "HEATS" ? lcqAdvanceCount : 1,
       invert_main: format === "HEATS" && invertMain,
       formation_lap_on_start: formationStart,
@@ -88,132 +103,91 @@ export function RaceSetup({ busy, readerEvent, onCreate }: Props) {
     });
   };
 
-  return (
-    <section className="setup-shell">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Race setup</p>
-          <h2>Create new race</h2>
-          <p className="section-copy">Name the race, choose the format, and register the tags that can score.</p>
-        </div>
-      </div>
-      <form onSubmit={submit} className="setup-form">
-        <section className="setup-section">
-          <div className="setup-section-title">
-            <span className="step-number">1</span>
-            <div><h3>Race setup</h3><small>{estimatedRaces} scheduled race{estimatedRaces === 1 ? "" : "s"}</small></div>
-          </div>
-          <div className="event-fields">
-            <label className="wide-field">
-              <span>Race name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter race name" required />
-            </label>
-            <label>
-              <span>Location</span>
-              <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional track name" maxLength={160} />
-            </label>
-            <label>
-              <span>Select race type</span>
-              <select value={format} onChange={(e) => setFormat(e.target.value as RaceFormat)}>
-                {formats.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>Race laps</span>
-              <input type="number" min="1" max="10000" value={targetLaps} onChange={(e) => setTargetLaps(Number(e.target.value))} required />
-            </label>
-            {format === "HEATS" && <>
-              <label>
-                <span>Number of heats</span>
-                <input type="number" min="1" max="100" value={heatCount} onChange={(e) => setHeatCount(Number(e.target.value))} required />
-              </label>
-              <label>
-                <span>Advance from each heat</span>
-                <input type="number" min="1" max="200" value={advanceCount} onChange={(e) => setAdvanceCount(Number(e.target.value))} required />
-              </label>
-            </>}
-          </div>
-        </section>
+  const allSelected = profiles.length > 0 && profiles.every((profile) => selectedProfiles.has(profile.id));
+  const selectedFormat = formats.find((item) => item.value === format)!;
 
-        <details className="rules-panel">
-          <summary>
-            <span className="step-number">2</span>
-            <span><strong>Race rules</strong><small>Formation laps, cautions, LCQ, and starting order</small></span>
-            <b>Customize</b>
-          </summary>
+  return (
+    <section className="race-hub-shell">
+      <div className="section-heading">
+        <div><p className="eyebrow">Trackside control</p><h2>Race Hub</h2><p className="section-copy">Build the race here. The Pi stores it and the physical reader scores it.</p></div>
+      </div>
+
+      <section className="race-hub-panel saved-races-panel">
+        <h3>Current and Past Races</h3>
+        <div className="saved-race-actions">
+          <select aria-label="Select a saved race" value={selectedSaved} onChange={(event) => setSelectedSaved(event.target.value)}>
+            <option value="">Select a saved race</option>
+            {savedEvents.map((event) => <option key={event.id} value={event.id}>{event.name} · {event.status}</option>)}
+          </select>
+          <button className="primary-button open-race-button" type="button" disabled={!selectedSaved || busy} onClick={() => void onOpen(selectedSaved)}>Open Race</button>
+          <button className="duplicate-button" type="button" disabled={!selectedSaved || busy} onClick={() => void onDuplicate(selectedSaved)}>Duplicate</button>
+          <button className="danger-button" type="button" disabled={!selectedSaved || busy} onClick={() => {
+            if (window.confirm("Delete this saved race and all of its results?")) void onDelete(selectedSaved);
+          }}>Delete Race</button>
+          <button className="danger-button" type="button" disabled={savedEvents.length === 0 || busy} onClick={() => {
+            if (window.confirm("Delete every saved race and all results? This cannot be undone.")) void onDeleteAll();
+          }}>Delete All Races</button>
+        </div>
+      </section>
+
+      <form onSubmit={submit} className="race-hub-panel race-create-panel">
+        <h3>Create New Race</h3>
+        <div className="event-fields race-hub-fields">
+          <label><span>Race name</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter race name" required /></label>
+          <label><span>Race location</span><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Enter race location" maxLength={160} /></label>
+          <label><span>Select race type</span><select value={format} onChange={(event) => setFormat(event.target.value as RaceFormat)}>{formats.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select><small className="field-help">{selectedFormat.detail}</small></label>
+        </div>
+
+        <div className="racer-selector-heading">
+          <h4>Select Racers</h4>
+          <div><button type="button" className="primary-button" onClick={() => setSelectedProfiles(new Set(profiles.map((profile) => profile.id)))}>Select All Racers</button><button type="button" className="primary-button" onClick={() => setSelectedProfiles(new Set())} disabled={!allSelected && selectedProfiles.size === 0}>Unselect All Racers</button></div>
+        </div>
+        <div className="racer-profile-picker">
+          {profiles.length === 0 && <p className="empty-state">No registered racers. Open Racer Profiles in the top menu, or add a race-day racer below.</p>}
+          {profiles.map((profile) => <label key={profile.id}><input type="checkbox" checked={selectedProfiles.has(profile.id)} onChange={(event) => setSelectedProfiles((current) => { const next = new Set(current); if (event.target.checked) next.add(profile.id); else next.delete(profile.id); return next; })} /><span>{profile.driver_name} (#{profile.kart_number})</span><small>{profile.tag_id}</small></label>)}
+        </div>
+
+        {format === "HEATS" && <div className="race-configuration-grid">
+          <label><span>Number of racers</span><input value={racers.length} readOnly /></label>
+          <label><span>Number of heats</span><input type="number" min="1" max="100" value={heatCount} onChange={(event) => setHeatCount(Number(event.target.value))} /></label>
+          <label><span>Advance from each heat</span><input type="number" min="1" max="200" value={advanceCount} onChange={(event) => setAdvanceCount(Number(event.target.value))} /></label>
+          <label><span>Number of LCQs</span><input type="number" min="0" max="100" value={lcqCount} onChange={(event) => setLcqCount(Number(event.target.value))} /></label>
+          <label><span>Advance from LCQ</span><input type="number" min="1" max="200" value={lcqAdvanceCount} onChange={(event) => setLcqAdvanceCount(Number(event.target.value))} /></label>
+          <label><span>Heats laps</span><input type="number" min="1" max="10000" value={heatLaps} onChange={(event) => setHeatLaps(Number(event.target.value))} /></label>
+          <label><span>LCQ laps</span><input type="number" min="1" max="10000" value={lcqLaps} onChange={(event) => setLcqLaps(Number(event.target.value))} /></label>
+          <label><span>Main event laps</span><input type="number" min="1" max="10000" value={mainLaps} onChange={(event) => setMainLaps(Number(event.target.value))} /></label>
+          <label className="wide-toggle"><span>Invert Main field</span><span className="inline-check"><input type="checkbox" checked={invertMain} onChange={(event) => setInvertMain(event.target.checked)} /> Slowest qualifier starts first</span></label>
+        </div>}
+
+        {format !== "HEATS" && <div className="race-configuration-grid"><label><span>Race laps</span><input type="number" min="1" max="10000" value={mainLaps} onChange={(event) => setMainLaps(Number(event.target.value))} /></label></div>}
+
+        <details className="rules-panel" open>
+          <summary><span className="step-number">✓</span><span><strong>Race Rules</strong><small>Reader and caution behavior</small></span><b>Customize</b></summary>
           <div className="rule-grid">
-            <label className="check-field"><input type="checkbox" checked={formationStart} onChange={(e) => setFormationStart(e.target.checked)} /><span>Ignore the first crossing after the race starts</span></label>
-            <label className="check-field"><input type="checkbox" checked={formationRestart} onChange={(e) => setFormationRestart(e.target.checked)} /><span>Ignore the first crossing after every restart</span></label>
-            <label className="check-field"><input type="checkbox" checked={cautionSync} onChange={(e) => setCautionSync(e.target.checked)} /><span>On red or yellow, move the field to the leader’s lap</span></label>
-            {format === "HEATS" && <label className="check-field"><input type="checkbox" checked={invertMain} onChange={(e) => setInvertMain(e.target.checked)} /><span>Reverse qualifying order for the main</span></label>}
-            {format === "HEATS" && <label className="check-field"><input type="checkbox" checked={lcqEnabled} onChange={(e) => setLcqEnabled(e.target.checked)} /><span>Run a last chance qualifier before the main</span></label>}
-            {format === "HEATS" && lcqEnabled && <label className="rule-field"><span>Advance from the LCQ</span><input type="number" min="1" max="200" value={lcqAdvanceCount} onChange={(e) => setLcqAdvanceCount(Number(e.target.value))} required /></label>}
-            <label className="check-field"><input type="checkbox" checked={randomizeGrid} onChange={(e) => setRandomizeGrid(e.target.checked)} /><span>Randomize the opening heat assignments</span></label>
-            <label className="rule-field">
-              <span>Ignore repeat scans for</span>
-              <div className="input-suffix">
-                <input type="number" min="0" max="60" step="0.1" value={duplicateWindow / 1000} onChange={(e) => setDuplicateWindow(Math.round(Number(e.target.value) * 1000))} required />
-                <em>seconds</em>
-              </div>
-            </label>
+            <label className="check-field"><input type="checkbox" checked={formationStart} onChange={(event) => setFormationStart(event.target.checked)} /><span>Skip one lap on every first green flag</span></label>
+            <label className="check-field"><input type="checkbox" checked={formationRestart} onChange={(event) => setFormationRestart(event.target.checked)} /><span>Skip one lap after every restart</span></label>
+            <label className="check-field"><input type="checkbox" checked={cautionSync} onChange={(event) => setCautionSync(event.target.checked)} /><span>Keep racers on the lead lap during cautions</span></label>
+            <label className="check-field"><input type="checkbox" checked={randomizeGrid} onChange={(event) => setRandomizeGrid(event.target.checked)} /><span>Randomize starting assignments</span></label>
+            <label className="rule-field"><span>Ignore repeat scans for</span><div className="input-suffix"><input type="number" min="0" max="60" step="0.1" value={duplicateWindow / 1000} onChange={(event) => setDuplicateWindow(Math.round(Number(event.target.value) * 1000))} /><em>seconds</em></div></label>
           </div>
         </details>
 
-        <div className="entrant-editor">
-          <div className="section-heading compact">
-            <div className="setup-section-title">
-              <span className="step-number">3</span>
-              <div><h3>Racers in this race</h3><small>Only registered tags can record laps.</small></div>
-            </div>
-            <span className="quiet-label">{racers.length} selected</span>
+        <details className="race-day-editor">
+          <summary>+ Add a race-day racer without saving a profile</summary>
+          <div className="entrant-editor">
+            {raceDayRacers.map((racer, index) => <div className="entrant-row" key={index}>
+              <input aria-label={`Racer ${index + 1}`} value={racer.driver_name} onChange={(event) => updateRaceDayRacer(index, "driver_name", event.target.value)} placeholder="Racer name" required />
+              <input aria-label={`Kart ${index + 1}`} value={racer.kart_number} onChange={(event) => updateRaceDayRacer(index, "kart_number", event.target.value)} placeholder="Kart #" required />
+              <div className="tag-input"><input aria-label={`Tag ${index + 1}`} value={racer.tag_id} onChange={(event) => updateRaceDayRacer(index, "tag_id", event.target.value)} placeholder="Scan or enter tag" required /><button type="button" className={scanTarget?.index === index ? "scanning" : ""} onClick={() => setScanTarget({ index, afterId: readerEvent?.id ?? null })}>{scanTarget?.index === index ? "Waiting…" : "Scan tag"}</button></div>
+              <button className="icon-button" type="button" onClick={() => setRaceDayRacers((current) => current.filter((_, item) => item !== index))}>×</button>
+            </div>)}
+            <button className="text-button" type="button" onClick={() => setRaceDayRacers((current) => [...current, blankRacer()])}>+ Add race-day racer</button>
           </div>
-          <div className={`entrant-header ${format === "HEATS" ? "with-heat" : ""}`}>
-            <span>Racer</span><span>Kart</span>{format === "HEATS" && <span>Heat</span>}<span>Tag ID</span><span />
-          </div>
-          {racers.map((racer, index) => (
-            <div className={`entrant-row ${format === "HEATS" ? "with-heat" : ""}`} key={index}>
-              <input aria-label={`Racer ${index + 1}`} value={racer.driver_name} onChange={(e) => updateRacer(index, "driver_name", e.target.value)} placeholder="Racer name" required />
-              <input aria-label={`Kart ${index + 1}`} value={racer.kart_number} onChange={(e) => updateRacer(index, "kart_number", e.target.value)} placeholder="Kart #" required />
-              {format === "HEATS" && <select aria-label={`Heat ${index + 1}`} value={racer.heat_number ?? 1} onChange={(e) => updateRacer(index, "heat_number", Number(e.target.value))} disabled={randomizeGrid}>
-                {Array.from({ length: heatCount }, (_, heat) => <option value={heat + 1} key={heat + 1}>H{heat + 1}</option>)}
-              </select>}
-              <div className="tag-input">
-                <input aria-label={`Tag ${index + 1}`} value={racer.tag_id} onChange={(e) => updateRacer(index, "tag_id", e.target.value)} placeholder="Scan or enter tag" required />
-                <button type="button" className={scanTarget?.index === index ? "scanning" : ""} onClick={() => setScanTarget({ index, afterId: readerEvent?.id ?? null })}>
-                  {scanTarget?.index === index ? "Waiting…" : "Scan"}
-                </button>
-              </div>
-              <button className="icon-button" type="button" aria-label={`Remove racer ${index + 1}`} disabled={racers.length === 1} onClick={() => setRacers((current) => current.filter((_, item) => item !== index))}>×</button>
-            </div>
-          ))}
-          <button className="text-button" type="button" onClick={() => setRacers((current) => [...current, blankRacer()])}>+ Add racer to field</button>
-          <p className="reader-capture-status">
-            {scanTarget ? "Pass one tag through the reader." : readerEvent ? `Last tag: ${readerEvent.tag_id}` : "No physical tag has been received yet."}
-          </p>
-        </div>
+        </details>
 
-        <section className="race-plan-preview" aria-label="Race plan preview">
-          <div>
-            <span>Race plan preview</span>
-            <strong>{racers.length} racer{racers.length === 1 ? "" : "s"}</strong>
-          </div>
-          <div>
-            <span>Program</span>
-            <strong>{estimatedRaces} race{estimatedRaces === 1 ? "" : "s"}</strong>
-          </div>
-          <div>
-            <span>Distance</span>
-            <strong>{targetLaps} lap{targetLaps === 1 ? "" : "s"}</strong>
-          </div>
-          <div>
-            <span>Grid</span>
-            <strong>{randomizeGrid ? "Randomized" : "Assigned"}</strong>
-          </div>
-        </section>
-
-        <div className="form-footer">
-          <button className="primary-button" type="submit" disabled={busy}>{busy ? "Creating…" : "Create event"}</button>
-        </div>
+        {formError && <p className="inline-form-error" role="alert">{formError}</p>}
+        <section className="race-plan-preview"><div><span>Race plan preview</span><strong>{racers.length} racers</strong></div><div><span>Program</span><strong>{estimatedRaces} races</strong></div><div><span>Final distance</span><strong>{mainLaps} laps</strong></div><div><span>Grid</span><strong>{randomizeGrid ? "Randomized" : "Assigned"}</strong></div></section>
+        <div className="form-footer"><button className="primary-button" type="submit" disabled={busy}>{busy ? "Creating…" : "Create Race"}</button></div>
       </form>
     </section>
   );

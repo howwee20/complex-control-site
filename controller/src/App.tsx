@@ -5,6 +5,7 @@ import { OperatorLogin, OperatorPinChange } from "./components/OperatorAccess";
 import { PublicDisplay } from "./components/PublicDisplay";
 import { RaceControl } from "./components/RaceControl";
 import { RaceSetup } from "./components/RaceSetup";
+import { RacerProfiles } from "./components/RacerProfiles";
 import { SystemUpdates } from "./components/SystemUpdates";
 import { formatDate } from "./format";
 import type {
@@ -14,13 +15,16 @@ import type {
   EventSummary,
   EventView,
   RaceSnapshot,
+  RacerProfile,
 } from "./types";
 
-type Screen = "product" | "setup" | "event" | "race" | "history" | "updates" | "display";
+type Screen = "product" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display";
 type AccessState = "checking" | "open" | "locked";
 
 const publicPreview = import.meta.env.VITE_PUBLIC_PREVIEW === "true";
 const controllerUrl = import.meta.env.VITE_CONTROLLER_URL || "http://10.42.0.1:8000";
+const previewProfilesKey = "complex-control-racer-profiles";
+const previewEventsKey = "complex-control-created-races-v2";
 const ProductShowcase = lazy(async () => {
   const module = await import("./components/ProductShowcase");
   return { default: module.ProductShowcase };
@@ -30,12 +34,48 @@ function prependUniqueEvent(current: EventView[], incoming: EventView): EventVie
   return [incoming, ...current.filter((event) => event.id !== incoming.id)].slice(0, 50);
 }
 
+function previewProfiles(): RacerProfile[] {
+  try {
+    const values = JSON.parse(localStorage.getItem(previewProfilesKey) ?? "[]") as Array<Record<string, unknown>>;
+    return values.map((value, index) => ({
+      id: String(value.id ?? `preview-profile-${index}`),
+      driver_name: String(value.driver_name ?? value.name ?? "Racer"),
+      kart_number: String(value.kart_number ?? value.number ?? index + 1),
+      tag_id: String(value.tag_id ?? value.tag ?? `PREVIEW-${index + 1}`),
+      created_at: String(value.created_at ?? new Date().toISOString()),
+      updated_at: String(value.updated_at ?? new Date().toISOString()),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function previewEvents(): EventSummary[] {
+  try {
+    const values = JSON.parse(localStorage.getItem(previewEventsKey) ?? "[]") as Array<Record<string, unknown>>;
+    return values.map((value, index) => ({
+      id: String(value.id ?? `preview-event-${index}`),
+      name: String(value.name ?? "Preview Race"),
+      location: typeof value.location === "string" ? value.location : null,
+      format: "HEATS",
+      status: "ACTIVE",
+      racer_count: Array.isArray(value.schedule) ? value.schedule.length : Number(value.racer_count ?? 0),
+      race_count: Array.isArray(value.schedule) ? value.schedule.length : Number(value.race_count ?? 0),
+      created_at: String(value.created_at ?? value.createdAt ?? new Date().toISOString()),
+      completed_at: null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>(() => {
     const requestedView = new URLSearchParams(window.location.search).get("view");
-    return publicPreview || requestedView === "product" ? "product" : "setup";
+    return requestedView === "product" ? "product" : "setup";
   });
-  const [savedEvents, setSavedEvents] = useState<EventSummary[]>([]);
+  const [savedEvents, setSavedEvents] = useState<EventSummary[]>(() => publicPreview ? previewEvents() : []);
+  const [profiles, setProfiles] = useState<RacerProfile[]>(() => publicPreview ? previewProfiles() : []);
   const [event, setEvent] = useState<EventSnapshot | null>(null);
   const [race, setRace] = useState<RaceSnapshot | null>(null);
   const [observations, setObservations] = useState<EventView[]>([]);
@@ -49,8 +89,9 @@ export default function App() {
 
   const refreshEvents = useCallback(async () => setSavedEvents(await api.listEvents()), []);
   const loadOperatorData = useCallback(async () => {
-    const [programs, health, reads] = await Promise.all([api.listEvents(), api.health(), api.readerEvents()]);
+    const [programs, racers, health, reads] = await Promise.all([api.listEvents(), api.listRacerProfiles(), api.health(), api.readerEvents()]);
     setSavedEvents(programs);
+    setProfiles(racers);
     setReaderMode(health.reader_mode);
     setReaderEvent(reads[0] ?? null);
   }, []);
@@ -101,7 +142,22 @@ export default function App() {
 
   const createEvent = (payload: EventCreate) => guarded(async () => {
     if (publicPreview) {
-      setError("Connect to the trackside controller to create and run an event.");
+      const created: EventSummary = {
+        id: crypto.randomUUID(),
+        name: payload.name,
+        location: payload.location ?? null,
+        format: payload.format,
+        status: "ACTIVE",
+        racer_count: payload.racers.length,
+        race_count: payload.format === "HEATS" ? payload.heat_count + payload.lcq_count + 1 : Math.max(1, payload.racers.length - 1),
+        created_at: new Date().toISOString(),
+        completed_at: null,
+      };
+      setSavedEvents((current) => {
+        const next = [created, ...current];
+        localStorage.setItem(previewEventsKey, JSON.stringify(next));
+        return next;
+      });
       return;
     }
     const created = await api.createEvent(payload);
@@ -111,7 +167,92 @@ export default function App() {
     await refreshEvents();
   });
 
+  const duplicateEvent = (eventId: string) => guarded(async () => {
+    if (publicPreview) {
+      setSavedEvents((current) => {
+        const source = current.find((item) => item.id === eventId);
+        if (!source) return current;
+        const copy = { ...source, id: crypto.randomUUID(), name: `${source.name} 2`, created_at: new Date().toISOString() };
+        const next = [copy, ...current];
+        localStorage.setItem(previewEventsKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+    await api.duplicateEvent(eventId);
+    await refreshEvents();
+  });
+
+  const deleteEvent = (eventId: string) => guarded(async () => {
+    if (publicPreview) {
+      setSavedEvents((current) => {
+        const next = current.filter((item) => item.id !== eventId);
+        localStorage.setItem(previewEventsKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+    await api.deleteEvent(eventId);
+    if (event?.id === eventId) setEvent(null);
+    await refreshEvents();
+  });
+
+  const deleteAllEvents = () => guarded(async () => {
+    if (publicPreview) {
+      setSavedEvents([]);
+      localStorage.setItem(previewEventsKey, "[]");
+      return;
+    }
+    await api.deleteAllEvents();
+    setEvent(null);
+    setRace(null);
+    await refreshEvents();
+  });
+
+  const refreshProfiles = useCallback(async () => setProfiles(await api.listRacerProfiles()), []);
+  const createProfile = (profile: Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">) => guarded(async () => {
+    if (publicPreview) {
+      setProfiles((current) => {
+        const now = new Date().toISOString();
+        const next = [...current, { ...profile, id: crypto.randomUUID(), created_at: now, updated_at: now }];
+        localStorage.setItem(previewProfilesKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+    await api.createRacerProfile(profile);
+    await refreshProfiles();
+  });
+  const updateProfile = (profileId: string, profile: Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">) => guarded(async () => {
+    if (publicPreview) {
+      setProfiles((current) => {
+        const next = current.map((item) => item.id === profileId ? { ...item, ...profile, updated_at: new Date().toISOString() } : item);
+        localStorage.setItem(previewProfilesKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+    await api.updateRacerProfile(profileId, profile);
+    await refreshProfiles();
+  });
+  const deleteProfile = (profileId: string) => guarded(async () => {
+    if (publicPreview) {
+      setProfiles((current) => {
+        const next = current.filter((item) => item.id !== profileId);
+        localStorage.setItem(previewProfilesKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+    await api.deleteRacerProfile(profileId);
+    await refreshProfiles();
+  });
+
   const openEvent = (eventId: string) => guarded(async () => {
+    if (publicPreview) {
+      setError("This is the website preview. Join the Pi Wi-Fi to open and run the real saved race.");
+      return;
+    }
     setEvent(await api.getEvent(eventId));
     setRace(null);
     setObservations([]);
@@ -134,7 +275,7 @@ export default function App() {
 
   const openController = () => {
     if (publicPreview) {
-      window.location.assign(controllerUrl);
+      navigate("setup");
       return;
     }
     navigate("setup");
@@ -159,11 +300,12 @@ export default function App() {
           <img src="/complex-control-logo.png" alt="Complex Control — Timing, Control, Results" />
         </a>
         <nav>
-          {publicPreview && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Product</button>}
-          {publicPreview && <button onClick={openController}>Race control</button>}
-          {!publicPreview && access === "open" && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>System</button>}
-          {!publicPreview && access === "open" && <button className={screen === "setup" ? "active" : ""} onClick={() => navigate("setup")}>New event</button>}
-          {!publicPreview && access === "open" && <button className={screen === "history" ? "active" : ""} onClick={() => navigate("history")}>Events</button>}
+          {publicPreview && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
+          {publicPreview && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
+          {publicPreview && <button className={screen === "setup" ? "active" : ""} onClick={openController}>Let's Go Racing</button>}
+          {!publicPreview && access === "open" && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
+          {!publicPreview && access === "open" && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
+          {!publicPreview && access === "open" && <button className={screen === "setup" || screen === "history" ? "active" : ""} onClick={() => navigate("setup")}>Let's Go Racing</button>}
           {!publicPreview && access === "open" && event && <button className={screen === "event" ? "active" : ""} onClick={() => navigate("event")}>Schedule</button>}
           {!publicPreview && access === "open" && race && <button className={screen === "race" ? "active" : ""} onClick={() => setScreen("race")}>Race control</button>}
           {!publicPreview && access === "open" && <button className={screen === "updates" ? "active" : ""} onClick={() => navigate("updates")}>Updates</button>}
@@ -200,9 +342,11 @@ export default function App() {
                 <a href={controllerUrl}>Connect hardware</a>
               </section>
             )}
-            <RaceSetup busy={busy} readerEvent={readerEvent} onCreate={createEvent} />
+            <RaceSetup busy={busy} readerEvent={readerEvent} profiles={profiles} savedEvents={savedEvents} onCreate={createEvent} onOpen={openEvent} onDuplicate={duplicateEvent} onDelete={deleteEvent} onDeleteAll={deleteAllEvents} />
           </>
         )}
+
+        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} />}
 
         {access === "open" && screen === "event" && event && <EventControl event={event} busy={busy} readerEvent={readerEvent} onOpenRace={openRace} onAdvance={() => guarded(async () => setEvent(await api.advanceEvent(event.id)))} />}
 

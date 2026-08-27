@@ -9,6 +9,7 @@ import type {
   LiveMessage,
   OperatorSessionView,
   RaceCreate,
+  RacerProfile,
   RacerDetail,
   RaceSnapshot,
   RaceSummary,
@@ -35,6 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new Error(detail);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -52,6 +54,7 @@ export const api = {
     }),
   health: () => request<HealthView>("/api/health"),
   listEvents: () => request<EventSummary[]>("/api/events"),
+  deleteAllEvents: () => request<{ deleted: number }>("/api/events", { method: "DELETE" }),
   getEvent: (eventId: string) => request<EventSnapshot>(`/api/events/${eventId}`),
   getRacer: (eventId: string, racerId: string) =>
     request<RacerDetail>(`/api/events/${eventId}/racers/${racerId}`),
@@ -60,6 +63,25 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  duplicateEvent: (eventId: string) =>
+    request<EventSnapshot>(`/api/events/${eventId}/duplicate`, { method: "POST" }),
+  deleteEvent: (eventId: string) =>
+    request<void>(`/api/events/${eventId}`, { method: "DELETE" }),
+  listRacerProfiles: () => request<RacerProfile[]>("/api/racer-profiles"),
+  createRacerProfile: (payload: Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">) =>
+    request<RacerProfile>("/api/racer-profiles", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateRacerProfile: (
+    profileId: string,
+    payload: Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">,
+  ) => request<RacerProfile>(`/api/racer-profiles/${profileId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }),
+  deleteRacerProfile: (profileId: string) =>
+    request<void>(`/api/racer-profiles/${profileId}`, { method: "DELETE" }),
   advanceEvent: (eventId: string) =>
     request<EventSnapshot>(`/api/events/${eventId}/advance`, { method: "POST" }),
   listRaces: () => request<RaceSummary[]>("/api/races"),
