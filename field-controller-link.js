@@ -13,6 +13,15 @@
       .forEach((link) => {
         link.href = controllerUrl;
       });
+
+    const nav = document.querySelector(".topbar nav");
+    if (nav && !nav.querySelector("[data-field-controller]")) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.fieldController = "true";
+      button.textContent = "Race Control";
+      nav.append(button);
+    }
   };
 
   document.addEventListener(

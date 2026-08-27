@@ -52,6 +52,16 @@ jobs:
             --exclude='scripts/' \
             --exclude='README.md' \
             ./ _site/
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path("_site/index.html")
+          page = index.read_text(encoding="utf-8-sig")
+          loader = '<script src="/field-controller-link.js"></script>'
+          if loader not in page:
+              page = page.replace("</body>", f"    {loader}\n  </body>")
+          index.write_text(page, encoding="utf-8")
+          PY
           python3 scripts/package-field-capsule.py \
             --dist controller/dist \
             --output _site/field \

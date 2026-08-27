@@ -64,8 +64,9 @@ export function SystemUpdates({ busy, onBusy, onError }: SystemUpdatesProps) {
       </div>
       <div className="update-card">
         <div>
-          <h3>Jake’s field interface</h3>
+          <h3>Jake’s live field interface</h3>
           <p>Your phone carries the newest signed interface from <code>mycomplexcontrol.com</code> into this offline Pi. The timing engine, racers, PIN, race history and RFID settings stay on the controller.</p>
+          <p className="update-message">Phone bridge v1 is active and ready for offline race-day updates.</p>
           <p className="update-message">{frontend?.message ?? "Checking the installed interface…"}</p>
           {frontend?.current && <small>Installed: {frontend.current.version}</small>}
         </div>
