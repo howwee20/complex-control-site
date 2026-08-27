@@ -1,0 +1,7 @@
+_site/
+controller/dist/
+controller/node_modules
+controller/*.tsbuildinfo
+controller/vite.config.js
+controller/vite.config.d.ts
+scripts/__pycache__/

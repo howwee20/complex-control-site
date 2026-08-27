@@ -1,5 +1,5 @@
 (() => {
-  const controllerUrl = "http://10.42.0.1:8000";
+  const controllerUrl = "/field-update.html";
 
   const isHardwareControl = (element) => {
     if (!element) return false;
