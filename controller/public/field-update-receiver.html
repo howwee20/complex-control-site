@@ -47,6 +47,7 @@
         const install = document.querySelector("#install");
         let prepared = null;
         let authenticated = false;
+        let installStarted = false;
 
         const setStatus = (message) => { status.textContent = message; };
         const signatureHeader = (buffer) => {
@@ -59,14 +60,10 @@
         };
 
         const refreshAuth = async () => {
-          try {
-            const response = await fetch("/api/auth/session", { cache: "no-store" });
-            const session = await response.json();
-            authenticated = session.authenticated || !session.enabled;
-          } catch {
-            authenticated = false;
-          }
-          login.hidden = authenticated;
+          // This route accepts only a release signed by the controller owner's key.
+          // Normal race controls remain protected by the operator PIN.
+          authenticated = true;
+          login.hidden = true;
           install.disabled = !prepared || !authenticated;
           if (prepared && authenticated) {
             try {
@@ -76,13 +73,68 @@
                 setStatus(`Jake’s ${prepared.version} interface is already installed.`);
                 install.textContent = "Already current";
                 install.disabled = true;
+                window.opener?.postMessage({ type: "complex-control-field-update-complete", version: prepared.version }, SOURCE_ORIGIN);
               } else {
-                setStatus(`Jake’s ${prepared.version} interface is ready to install.`);
+                setStatus(`Jake’s ${prepared.version} interface is verified and will install automatically.`);
+                void installPrepared();
               }
             } catch {
-              setStatus(`Jake’s ${prepared.version} interface is ready to install.`);
+              setStatus(`Jake’s ${prepared.version} interface is verified and will install automatically.`);
+              void installPrepared();
             }
           }
+        };
+
+        const installPrepared = async () => {
+          if (!prepared || !authenticated || installStarted) return;
+          installStarted = true;
+          install.disabled = true;
+          setStatus(`Uploading Jake’s ${prepared.version} interface to the Pi…`);
+          const response = await fetch("/api/system/frontend-update", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/gzip",
+              "X-Frontend-Filename": prepared.filename,
+              "X-Frontend-Signature": signatureHeader(prepared.signature),
+              "X-Frontend-SHA256": prepared.sha256,
+              "X-Frontend-Version": prepared.version,
+            },
+            body: prepared.capsule,
+          });
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            setStatus(body.detail || `The Pi rejected the update (${response.status}).`);
+            installStarted = false;
+            install.disabled = false;
+            return;
+          }
+          setStatus("Verified. The Pi is installing and health-checking the new interface…");
+          const deadline = Date.now() + 120000;
+          while (Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 1800));
+            try {
+              const check = await fetch("/api/system/frontend-update", { cache: "no-store" });
+              if (!check.ok) continue;
+              const update = await check.json();
+              if (update.state === "failed") {
+                setStatus(update.message || "The update failed and the previous interface was restored.");
+                installStarted = false;
+                install.disabled = false;
+                return;
+              }
+              if (update.state === "complete" && update.current?.version === prepared.version) {
+                setStatus("Installed and healthy. Opening Jake’s newest controller…");
+                window.opener?.postMessage({ type: "complex-control-field-update-complete", version: prepared.version }, SOURCE_ORIGIN);
+                window.setTimeout(() => window.location.replace("/"), 900);
+                return;
+              }
+            } catch {
+              // A short disconnect is expected while the Pi restarts the web service.
+            }
+          }
+          setStatus("The Pi is taking longer than expected. Open the controller to check its status.");
+          installStarted = false;
+          install.disabled = false;
         };
 
         window.addEventListener("message", (event) => {
@@ -110,52 +162,7 @@
           await refreshAuth();
         });
 
-        install.addEventListener("click", async () => {
-          if (!prepared || !authenticated) return;
-          install.disabled = true;
-          setStatus(`Uploading Jake’s ${prepared.version} interface to the Pi…`);
-          const response = await fetch("/api/system/frontend-update", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/gzip",
-              "X-Frontend-Filename": prepared.filename,
-              "X-Frontend-Signature": signatureHeader(prepared.signature),
-              "X-Frontend-SHA256": prepared.sha256,
-              "X-Frontend-Version": prepared.version,
-            },
-            body: prepared.capsule,
-          });
-          if (!response.ok) {
-            const body = await response.json().catch(() => ({}));
-            setStatus(body.detail || `The Pi rejected the update (${response.status}).`);
-            install.disabled = false;
-            return;
-          }
-          setStatus("Verified. The Pi is installing and health-checking the new interface…");
-          const deadline = Date.now() + 120000;
-          while (Date.now() < deadline) {
-            await new Promise((resolve) => setTimeout(resolve, 1800));
-            try {
-              const check = await fetch("/api/system/frontend-update", { cache: "no-store" });
-              if (!check.ok) continue;
-              const update = await check.json();
-              if (update.state === "failed") {
-                setStatus(update.message || "The update failed and the previous interface was restored.");
-                install.disabled = false;
-                return;
-              }
-              if (update.state === "complete" && update.current?.version === prepared.version) {
-                setStatus("Installed and healthy. Opening Jake’s newest controller…");
-                window.setTimeout(() => window.location.replace("/"), 900);
-                return;
-              }
-            } catch {
-              // A short disconnect is expected while the Pi restarts the web service.
-            }
-          }
-          setStatus("The Pi is taking longer than expected. Open the controller to check its status.");
-          install.disabled = false;
-        });
+        install.addEventListener("click", () => void installPrepared());
 
         if (window.opener) {
           window.opener.postMessage({ type: "complex-control-field-receiver-ready" }, SOURCE_ORIGIN);

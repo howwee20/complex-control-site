@@ -66,13 +66,13 @@ export function SystemUpdates({ busy, onBusy, onError }: SystemUpdatesProps) {
         <div>
           <h3>Jake’s live field interface</h3>
           <p>Your phone carries the newest signed interface from <code>mycomplexcontrol.com</code> into this offline Pi. The timing engine, racers, PIN, race history and RFID settings stay on the controller.</p>
-          <p className="update-message">Phone bridge v1 is active and ready for offline race-day updates.</p>
+          <p className="update-message">Automatic phone bridge is active for signed offline race-day interface updates.</p>
           <p className="update-message">{frontend?.message ?? "Checking the installed interface…"}</p>
           {frontend?.current && <small>Installed: {frontend.current.version}</small>}
         </div>
         <a className="primary-button update-link" href="https://mycomplexcontrol.com/field-update.html">Prepare latest on this phone</a>
       </div>
-      <p className="update-note">Prepare the update while cellular data is available, join ComplexControl, then return to the prepared page and press Install. A race must be stopped first; failed updates roll back automatically.</p>
+      <p className="update-note">Prepare while cellular data is available, join ComplexControl, then return to the prepared page. It hands a newer interface to the Pi automatically; the Pi verifies, installs, and health-checks it. Safari shows one finish button only if it blocks the local controller window. A race must be stopped first; failed updates roll back automatically.</p>
       <details className="recovery-update">
         <summary>Advanced full-controller recovery</summary>
         <div className="update-card">
