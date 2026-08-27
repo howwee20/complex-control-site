@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0c1117" />
+    <title>Install Complex Control Update</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #090909; color: #f8f5f6; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+      main { width: min(620px, 100%); padding: 30px; border: 1px solid #56333a; border-left: 5px solid #d82032; border-radius: 18px; background: #111011; box-shadow: 0 24px 80px #0009; }
+      h1 { margin: 0 0 10px; font-size: clamp(1.7rem, 7vw, 2.7rem); }
+      p { color: #bdb4b7; line-height: 1.55; }
+      .status { margin: 22px 0; padding: 15px; border-radius: 10px; background: #1a1617; color: #fff; font-weight: 700; }
+      form { display: grid; gap: 10px; }
+      input, button { width: 100%; min-height: 48px; border-radius: 9px; font: inherit; }
+      input { border: 1px solid #6c3039; padding: 0 14px; background: #191617; color: #fff; }
+      button { border: 0; padding: 0 18px; background: #d82032; color: #fff; font-weight: 800; cursor: pointer; }
+      button:disabled { opacity: .45; cursor: wait; }
+      a { color: #ff6b78; }
+      small { display: block; margin-top: 12px; color: #8f8588; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>COMPLEX CONTROL · FIELD UPDATE</p>
+      <h1>Install Jake’s latest interface</h1>
+      <p>The update stays on your phone while you switch networks. The Pi verifies its signature, preserves all race data and automatically restores the prior interface if health checks fail.</p>
+      <div class="status" id="status">Waiting for the prepared update from mycomplexcontrol.com…</div>
+      <form id="login" hidden>
+        <label for="pin">Operator PIN</label>
+        <input id="pin" inputmode="numeric" autocomplete="current-password" required />
+        <button type="submit">Unlock controller</button>
+      </form>
+      <button id="install" type="button" disabled>Install latest interface</button>
+      <small>Updates cannot start while a race is running. The RFID reader service is not replaced by this interface update.</small>
+      <p><a href="/">Open the current controller</a></p>
+    </main>
+    <script>
+      (() => {
+        "use strict";
+        const SOURCE_ORIGIN = "https://mycomplexcontrol.com";
+        const status = document.querySelector("#status");
+        const login = document.querySelector("#login");
+        const pin = document.querySelector("#pin");
+        const install = document.querySelector("#install");
+        let prepared = null;
+        let authenticated = false;
+
+        const setStatus = (message) => { status.textContent = message; };
+        const signatureHeader = (buffer) => {
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+          }
+          return btoa(binary);
+        };
+
+        const refreshAuth = async () => {
+          try {
+            const response = await fetch("/api/auth/session", { cache: "no-store" });
+            const session = await response.json();
+            authenticated = session.authenticated || !session.enabled;
+          } catch {
+            authenticated = false;
+          }
+          login.hidden = authenticated;
+          install.disabled = !prepared || !authenticated;
+          if (prepared && authenticated) {
+            try {
+              const response = await fetch("/api/system/frontend-update", { cache: "no-store" });
+              const current = response.ok ? await response.json() : null;
+              if (current?.current?.version === prepared.version) {
+                setStatus(`Jake’s ${prepared.version} interface is already installed.`);
+                install.textContent = "Already current";
+                install.disabled = true;
+              } else {
+                setStatus(`Jake’s ${prepared.version} interface is ready to install.`);
+              }
+            } catch {
+              setStatus(`Jake’s ${prepared.version} interface is ready to install.`);
+            }
+          }
+        };
+
+        window.addEventListener("message", (event) => {
+          if (event.origin !== SOURCE_ORIGIN || event.source !== window.opener) return;
+          if (event.data?.type !== "complex-control-field-capsule") return;
+          if (!(event.data.capsule instanceof ArrayBuffer) || !(event.data.signature instanceof ArrayBuffer)) return;
+          prepared = event.data;
+          setStatus(`Received Jake’s ${prepared.version} verified interface from your phone.`);
+          void refreshAuth();
+        });
+
+        login.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          setStatus("Unlocking the controller…");
+          const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin: pin.value }),
+          });
+          if (!response.ok) {
+            setStatus("That PIN did not unlock the controller.");
+            return;
+          }
+          pin.value = "";
+          await refreshAuth();
+        });
+
+        install.addEventListener("click", async () => {
+          if (!prepared || !authenticated) return;
+          install.disabled = true;
+          setStatus(`Uploading Jake’s ${prepared.version} interface to the Pi…`);
+          const response = await fetch("/api/system/frontend-update", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/gzip",
+              "X-Frontend-Filename": prepared.filename,
+              "X-Frontend-Signature": signatureHeader(prepared.signature),
+              "X-Frontend-SHA256": prepared.sha256,
+              "X-Frontend-Version": prepared.version,
+            },
+            body: prepared.capsule,
+          });
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            setStatus(body.detail || `The Pi rejected the update (${response.status}).`);
+            install.disabled = false;
+            return;
+          }
+          setStatus("Verified. The Pi is installing and health-checking the new interface…");
+          const deadline = Date.now() + 120000;
+          while (Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 1800));
+            try {
+              const check = await fetch("/api/system/frontend-update", { cache: "no-store" });
+              if (!check.ok) continue;
+              const update = await check.json();
+              if (update.state === "failed") {
+                setStatus(update.message || "The update failed and the previous interface was restored.");
+                install.disabled = false;
+                return;
+              }
+              if (update.state === "complete" && update.current?.version === prepared.version) {
+                setStatus("Installed and healthy. Opening Jake’s newest controller…");
+                window.setTimeout(() => window.location.replace("/"), 900);
+                return;
+              }
+            } catch {
+              // A short disconnect is expected while the Pi restarts the web service.
+            }
+          }
+          setStatus("The Pi is taking longer than expected. Open the controller to check its status.");
+          install.disabled = false;
+        });
+
+        if (window.opener) {
+          window.opener.postMessage({ type: "complex-control-field-receiver-ready" }, SOURCE_ORIGIN);
+        } else {
+          setStatus("Open this page from mycomplexcontrol.com after preparing the latest update.");
+        }
+        void refreshAuth();
+      })();
+    </script>
+  </body>
+</html>
