@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -257,7 +257,7 @@
         const read=()=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return[]}};
         const write=x=>localStorage.setItem(key,JSON.stringify(x));
         const refreshList=()=>{const list=document.querySelector('#profile-list');if(!list)return;const riders=read();list.innerHTML=riders.length?'':'No racer profiles added yet.';riders.forEach((r,i)=>{const p=document.createElement('p');p.innerHTML=`<strong>${r.name}</strong> Â· #${r.number} Â· ${r.tag||'No tag'} `;const b=document.createElement('button');b.type='button';b.textContent='Delete';b.dataset.deleteProfile=i;p.append(b);list.append(p)})};
-        document.addEventListener('click',e=>{if(e.target.closest('#add-profile')){const n=document.querySelector('#profile-name'),num=document.querySelector('#profile-number'),tag=document.querySelector('#profile-tag');const riders=read();riders.push({name:n?.value||'Unnamed racer',number:num?.value||'â€”',tag:tag?.value||''});write(riders);window.setTimeout(refreshList,0)}if(e.target.dataset.deleteProfile!==undefined){const riders=read();riders.splice(Number(e.target.dataset.deleteProfile),1);write(riders);refreshList()}} ,true);
+        document.addEventListener('click',e=>{if(e.target.closest('#add-profile')){const n=document.querySelector('#profile-name'),num=document.querySelector('#profile-number'),tag=document.querySelector('#profile-tag'),name=(n?.value||'Unnamed racer').trim(),number=(num?.value||'—').trim(),riders=read(),duplicateName=name&&riders.some(r=>String(r.name||'').trim().toLowerCase()===name.toLowerCase()),duplicateNumber=number&&number!=='—'&&document.querySelector('#allow-duplicate-numbers')?.value!=='yes'&&riders.some(r=>String(r.number||'').trim()===number);if(duplicateName||duplicateNumber){e.preventDefault();e.stopImmediatePropagation();alert(duplicateName?'A racer profile with this name already exists.':'That racer number is already in use. Enable duplicate numbers to continue.');return}riders.push({name:name,number:number,tag:tag?.value||''});e.__complexControlProfileSaved=true;write(riders);window.setTimeout(refreshList,0)}if(e.target.dataset.deleteProfile!==undefined){const riders=read();riders.splice(Number(e.target.dataset.deleteProfile),1);write(riders);refreshList()}} ,true);
         const enhance=()=>{refreshList();document.querySelectorAll('.local-editor-fields input').forEach(input=>{if(!/profile/i.test(input.placeholder||'')||input.dataset.profileSelect)return;input.dataset.profileSelect='1';const s=document.createElement('select');s.multiple=true;s.size=Math.min(5,Math.max(2,read().length));read().forEach(r=>{const o=document.createElement('option');o.value=r.name;o.textContent=`${r.name} (#${r.number})`;s.append(o)});input.replaceWith(s)})};
         enhance();
       })();
@@ -306,7 +306,7 @@
         const hideContent=()=>qa('.product-shell,.local-product-copy,.local-racing-page,.setup-shell,.preview-banner').forEach(x=>x.style.display='none');
         const host=()=>{let h=q('.local-page-host');if(!h){h=document.createElement('main');h.className='local-page-host';q('.app-shell')?.append(h)}h.style.display='block';return h};
         const active=label=>qa('.topbar nav button').forEach(b=>b.classList.toggle('local-active',b.textContent.trim()===label));
-        const showLogin=()=>{hideContent();active('Log In');const h=host();h.innerHTML='<h1>Connect to system</h1><div class="local-login-card"><label><span>Connect as</span><select id="gate-role"><option>Racer</option><option>Admin</option><option>Simulator Mode</option></select></label><label><span>PIN</span><input id="gate-pin" type="password" placeholder="Enter any PIN"></label><button id="gate-login" type="button">Log In</button><p class="local-race-help">Any non-empty PIN works during this local test.</p></div>';q('#gate-login').onclick=()=>{const pin=q('#gate-pin').value;if(!pin)return;localStorage.setItem(authKey,JSON.stringify({role:q('#gate-role').value}));syncAuth();showHome()}};
+        const showLogin=()=>{hideContent();active('Log In');const h=host();h.innerHTML='<h1>Connect to system</h1><div class="local-login-card"><label><span>Connect as</span><select id="gate-role"><option>Racer</option><option>Admin</option><option>Simulator Mode</option></select></label><button id="gate-login" type="button">Connect</button><p class="local-race-help">Choose a mode, then connect to open the Race Hub.</p></div>';q('#gate-login').onclick=()=>{localStorage.setItem(authKey,JSON.stringify({role:q('#gate-role').value}));syncAuth();const racing=navButton("Let's Go Racing");if(racing)racing.click();else showHome()}};
         const showHome=()=>{hideContent();const h=q('.local-page-host');if(h)h.style.display='none';const copy=q('.local-product-copy');if(copy)copy.style.display='block';active('Home')};
         const syncAuth=()=>{const s=session(),profiles=navButton('Racer Profiles'),racing=navButton("Let's Go Racing"),login=navButton('Log In')||navButton('Log Out');if(profiles)profiles.style.display=s?'':'none';if(racing)racing.style.display=s?'':'none';if(login)login.textContent=s?'Log Out':'Log In'};
         document.addEventListener('click',e=>{const b=e.target.closest('.topbar nav button');if(!b)return;const label=b.textContent.trim();if(label==='Log In'){e.preventDefault();e.stopImmediatePropagation();showLogin()}if(label==='Log Out'){e.preventDefault();e.stopImmediatePropagation();localStorage.removeItem(authKey);syncAuth();showHome()}if((label==='Racer Profiles'||label==="Let's Go Racing")&&!session()){e.preventDefault();e.stopImmediatePropagation();showLogin();return}if(label==='Racer Profiles')window.setTimeout(()=>{qa('.local-racing-page').forEach(x=>x.style.display='none');active('Racer Profiles')},0);if(label==="Let's Go Racing")window.setTimeout(()=>{const h=q('.local-page-host');if(h)h.style.display='none';active("Let's Go Racing")},0);if(label==='Home')window.setTimeout(showHome,0)},true);
@@ -399,17 +399,6 @@
             const heading = host.querySelector(':scope > h1');
             let race;
             try { race = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]').find((item) => item.id === host.dataset.raceId); } catch (_) {}
-            if (heading && race && heading.textContent !== 'Race Control Center · ' + race.name) heading.textContent = 'Race Control Center · ' + race.name;
-            if (heading && String(race?.name || '').trim() && race?.location) {
-              let location = host.querySelector('#v2-race-location-display');
-              if (!location) {
-                location = document.createElement('p');
-                location.id = 'v2-race-location-display';
-                location.className = 'race-v2-race-location';
-                heading.before(location);
-              }
-              location.textContent = 'Location: ' + race.location;
-            }
             host.querySelectorAll('#v2-final-panel h2').forEach((finalHeading) => {
               if (race && finalHeading.textContent !== 'Final Results · ' + race.name) finalHeading.textContent = 'Final Results · ' + race.name;
             });
@@ -479,21 +468,18 @@
             profiles ? nav.insertBefore(button, profiles) : nav.append(button);
             button.onclick = () => { localStorage.setItem('complex-control-local-session', JSON.stringify({ role: 'Simulator Mode' })); [...nav.querySelectorAll('button')].find((item) => item.textContent.trim() === "Let's Go Racing")?.click(); };
           }
-          const name = document.querySelector('#v2-name');
-          if (name && !document.querySelector('#v2-location')) {
-            const label = document.createElement('label'); label.className = 'race-v2-field';
-            label.innerHTML = '<span>Race location (optional)</span><input id="v2-location" type="text" placeholder="Enter race location">';
-            name.closest('.race-v2-grid')?.append(label);
-          }
           const type = document.querySelector('#v2-type');
           if (type && !document.querySelector('#v2-skip-first-green')) {
             const label = document.createElement('label'); label.className = 'race-v2-checkbox';
             label.innerHTML = '<input id="v2-skip-first-green" type="checkbox" checked> Skip one lap on every first green flag';
-            type.closest('.race-v2-field')?.after(label);
+            const fields = document.querySelector('#v2-fields');
+            const invert = fields?.querySelector('.race-v2-invert-field');
+            if (invert) invert.after(label); else fields?.append(label);
             const sync = () => {
               const barrel = type.value === 'Barrel Racing';
+              const team = type.value === 'Team Race' || type.value === 'Team relay';
               label.hidden = barrel;
-              if (barrel) label.querySelector('input').checked = false;
+              label.querySelector('input').checked = !(barrel || team);
             };
             type.addEventListener('change', sync); sync();
           }
@@ -520,6 +506,7 @@
         };
         document.addEventListener('click', (event) => {
           const add = event.target.closest('#add-profile');
+          if (add && event.__complexControlProfileSaved) return;
           if (add) {
             const name = document.querySelector('#profile-name')?.value.trim().toLowerCase();
             const number = document.querySelector('#profile-number')?.value.trim();
@@ -527,13 +514,6 @@
             if (name && riders.some((rider) => String(rider.name || '').trim().toLowerCase() === name)) { event.preventDefault(); event.stopImmediatePropagation(); alert('A racer profile with this name already exists.'); return; }
             if (number && document.querySelector('#allow-duplicate-numbers')?.value !== 'yes' && riders.some((rider) => String(rider.number) === number)) { event.preventDefault(); event.stopImmediatePropagation(); alert('That racer number is already in use. Enable duplicate numbers to continue.'); }
           }
-          const create = event.target.closest('#v2-create');
-          const location = create ? document.querySelector('#v2-location')?.value.trim() : '', barrel = create && document.querySelector('#v2-type')?.value === 'Barrel Racing', skip = !barrel && !!document.querySelector('#v2-skip-first-green')?.checked;
-          if (create) setTimeout(() => {
-            if (!location && !skip) return;
-            const races = JSON.parse(localStorage.getItem('complex-control-created-races-v2') || '[]'); const latest = races.at(-1);
-            if (latest) { latest.location = location || ''; latest.configuration = latest.configuration || {}; latest.configuration.skipFirstLap = skip; localStorage.setItem('complex-control-created-races-v2', JSON.stringify(races)); }
-          }, 0);
         }, true);
         new MutationObserver(setup).observe(document.body, { childList: true, subtree: true }); setup();
       })();
@@ -558,7 +538,5 @@
         new MutationObserver(relabel).observe(document.documentElement, { childList: true, subtree: true });
       })();
     </script>
-    <script src="/field-controller-link.js?v=20260826-1"></script>
   </body>
 </html>
-
