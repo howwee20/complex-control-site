@@ -327,6 +327,11 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .racer-profile-picker small { color: #8d8588; font-size: .62rem; }
 .race-configuration-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; padding: 0 28px 28px; }
 .race-configuration-grid .wide-toggle { grid-column: span 2; }
+.race-configuration-grid > .field-help { grid-column: 1 / -1; min-height: 0; margin: 0; }
+.team-assignment-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; margin: -6px 28px 18px; padding: 18px; border: 1px solid #45383c; border-radius: 8px; background: #181718; }
+.team-assignment-grid label { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.team-assignment-grid label > span { margin: 0; color: #f4eff0; font-size: .74rem; text-transform: none; letter-spacing: 0; }
+.team-assignment-grid select { min-width: 104px; }
 .inline-check { display: flex !important; align-items: center; gap: 9px; color: #e5dddf !important; font-family: var(--font-body) !important; font-size: .72rem !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
 .inline-check input { width: 18px; height: 18px; accent-color: #d82032; }
 .race-create-panel .rules-panel { border-top: 1px solid #4a2b31; }
@@ -345,6 +350,17 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .profile-list strong,.profile-list small { display: block; }
 .profile-list strong { color: #fff; }
 .profile-list small { margin-top: 3px; color: #938b8e; }
+.mode-instructions { display: grid; grid-template-columns: minmax(180px,.5fr) 1fr; gap: 18px; align-items: center; padding: 18px 22px; border: 1px solid #4a2b31; border-left: 4px solid #d82032; border-radius: 12px; background: #111011; }
+.mode-instructions h3,.mode-instructions p { margin: 4px 0 0; }
+.mode-instructions p { color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.mode-instructions > strong { grid-column: 1 / -1; color: #f0848e; font-size: .72rem; }
+.event-results-card { margin-top: 18px; }
+.program-leaderboard { display: grid; gap: 0; }
+.program-leaderboard article { display: grid; grid-template-columns: 34px 1fr auto; gap: 13px; align-items: center; padding: 13px 2px; border-bottom: 1px solid #352c2f; }
+.program-leaderboard article:last-child { border-bottom: 0; }
+.program-leaderboard strong,.program-leaderboard small { display: block; }
+.program-leaderboard small { margin-top: 4px; color: var(--muted); font-size: .62rem; }
+.program-leaderboard b { color: #f0848e; font: .72rem var(--font-display); }
 
 @media (max-width: 1000px) {
   .saved-race-actions { grid-template-columns: 1fr 1fr; }
@@ -370,6 +386,7 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
   .event-fields,.rule-grid { grid-template-columns: 1fr; }.wide-field { grid-column: auto; }.entrant-header { display: none; }.entrant-row { grid-template-columns: 1fr 72px 38px; }.entrant-row .tag-input { grid-column: 1 / 3; }.entrant-row .icon-button { grid-column: 3; grid-row: 1 / 3; }
   .entrant-row.with-heat { grid-template-columns: 1fr 72px 72px 38px; }.entrant-row.with-heat .tag-input { grid-column: 1 / 4; }.entrant-row.with-heat .icon-button { grid-column: 4; grid-row: 1 / 3; }
   .form-footer,.race-hero { flex-direction: column; align-items: stretch; }.race-hero { display: flex; }.clock-block { text-align: left; margin-top: 20px; }.race-actions { flex-wrap: wrap; }
+  .mode-instructions { grid-template-columns: 1fr; }.mode-instructions > strong { grid-column: auto; }
   .flag-buttons { grid-template-columns: repeat(2,1fr); }.flag-checkered { grid-column: span 2; }.history-list > button { grid-template-columns: 1fr auto; }.history-list span { display: none; }.event-hero { align-items: flex-start; flex-direction: column; gap: 14px; }
   .public-display > header { padding: 24px 18px; align-items: flex-start; flex-direction: column; gap: 20px; }
   .public-leaderboard { padding: 10px 18px 24px; overflow: visible; }

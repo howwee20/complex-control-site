@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatClock, formatDate, formatDuration } from "../format";
 import type { ControlState, EntrantStanding, EventView, RaceSnapshot } from "../types";
 
@@ -59,6 +59,8 @@ export function RaceControl({
   const [correctedLap, setCorrectedLap] = useState(0);
   const [correctionReason, setCorrectionReason] = useState("");
   const [restartOpen, setRestartOpen] = useState(false);
+  const [randomGreenStatus, setRandomGreenStatus] = useState<string | null>(null);
+  const randomGreenTimer = useRef<number | null>(null);
   const [clockAnchor, setClockAnchor] = useState({
     raceId: race.id,
     elapsed: race.elapsed_ms,
@@ -72,6 +74,10 @@ export function RaceControl({
   useEffect(() => {
     setClockAnchor({ raceId: race.id, elapsed: race.elapsed_ms, receivedAt: Date.now() });
   }, [race.id, race.elapsed_ms, race.control_state, race.status]);
+
+  useEffect(() => () => {
+    if (randomGreenTimer.current !== null) window.clearTimeout(randomGreenTimer.current);
+  }, [race.id]);
 
   const elapsed = useMemo(() => {
     if (clockAnchor.raceId !== race.id) return race.elapsed_ms;
@@ -94,6 +100,22 @@ export function RaceControl({
     setCorrection(null);
   };
 
+  const armRandomGreen = () => {
+    if (randomGreenTimer.current !== null) return;
+    const minimum = race.mode_config.barrel_random_start_min_seconds;
+    const maximum = race.mode_config.barrel_random_start_max_seconds;
+    const delay = Math.round((minimum + Math.random() * Math.max(0, maximum - minimum)) * 1000);
+    setRandomGreenStatus("Armed — green will appear after the hidden random delay.");
+    randomGreenTimer.current = window.setTimeout(() => {
+      randomGreenTimer.current = null;
+      setRandomGreenStatus("GREEN — first tag pass records reaction and starts the run.");
+      void onControlState("GREEN");
+    }, delay);
+  };
+
+  const barrel = race.format === "BARREL_RACING";
+  const randomBarrelStart = barrel && race.mode_config.barrel_start_mode === "GREEN";
+
   return (
     <div className="race-layout">
       <section className="race-hero">
@@ -115,10 +137,16 @@ export function RaceControl({
         </div>
       </section>
 
+      {barrel && <section className="mode-instructions">
+        <div><p className="eyebrow">Barrel timer</p><h3>{randomBarrelStart ? "Random-green start" : "Rider-triggered start"}</h3></div>
+        <p>{randomBarrelStart ? "Stage the run, then arm the random green. The first tag pass after green records reaction time and starts the run; the second pass stops it." : "Set the run GREEN. The rider’s first tag pass starts the timer and the second pass stops it."}</p>
+        {randomGreenStatus && <strong>{randomGreenStatus}</strong>}
+      </section>}
+
       {race.status === "RUNNING" && <section className="flag-console">
         <div><p className="eyebrow">Race control</p><h3>Flag state</h3></div>
         <div className="flag-buttons">
-          {flags.map((flag) => (
+          {flags.filter((flag) => !randomBarrelStart || flag.state !== "GREEN").map((flag) => (
             <button
               key={flag.state}
               className={`flag-button flag-${flag.state.toLowerCase()} ${race.control_state === flag.state ? "active" : ""}`}
@@ -128,7 +156,13 @@ export function RaceControl({
               <i />{flag.label}
             </button>
           ))}
+          {randomBarrelStart && race.control_state !== "GREEN" && <button className="flag-button flag-green" disabled={busy || randomGreenTimer.current !== null} onClick={armRandomGreen}><i />{randomGreenTimer.current !== null ? "Armed" : "Arm random green"}</button>}
         </div>
+      </section>}
+
+      {race.leaderboard.length > 0 && <section className="leaderboard-card race-team-card">
+        <div className="section-heading compact"><div><p className="eyebrow">Team score</p><h3>Race team standings</h3></div><span className="quiet-label">Lowest points leads</span></div>
+        <div className="program-leaderboard">{race.leaderboard.map((entry) => <article key={entry.name}><span className="position">{entry.position}</span><div><strong>{entry.name}</strong><small>{entry.members.join(" · ")}</small></div><b>{entry.score}</b></article>)}</div>
       </section>}
 
       <section className="leaderboard-card">
@@ -143,12 +177,12 @@ export function RaceControl({
               {race.entrants.map((entrant) => (
                 <tr key={entrant.id}>
                   <td><span className="position">{entrant.position}</span></td>
-                  <td><strong>{entrant.driver_name}</strong><small>{entrant.tag_id}</small></td>
+                  <td><strong>{entrant.driver_name}</strong><small>{entrant.tag_id}{entrant.team_number ? ` · Team ${entrant.team_number}` : ""}</small></td>
                   <td><span className="kart-number">{entrant.kart_number}</span></td>
                   <td><strong>{entrant.laps_completed}</strong><small> / {race.target_laps}</small>{entrant.adjustment_total !== 0 && <em className="adjustment-mark">adjusted</em>}</td>
                   <td className="time-cell">{formatDuration(entrant.last_lap_ms)}</td>
                   <td className="time-cell best">{formatDuration(entrant.best_lap_ms)}</td>
-                  <td><span className={`driver-status ${entrant.finished_at ? "finished" : "racing"}`}>{entrant.finished_at ? "Finished" : race.control_state === "GREEN" ? "Racing" : "Held"}</span></td>
+                  <td><span className={`driver-status ${entrant.finished_at || entrant.eliminated_at_lap ? "finished" : "racing"}`}>{entrant.eliminated_at_lap ? `Eliminated at lap ${entrant.eliminated_at_lap}` : entrant.finished_at ? "Finished" : race.control_state === "GREEN" ? "Racing" : "Held"}</span>{entrant.reaction_time_ms !== null && <small>Reaction {formatDuration(entrant.reaction_time_ms)}</small>}</td>
                   <td><button className="table-action" onClick={() => openCorrection(entrant)}>Edit lap</button></td>
                 </tr>
               ))}

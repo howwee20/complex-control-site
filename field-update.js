@@ -8,6 +8,8 @@
   const details = document.querySelector("#details");
   const prepareButton = document.querySelector("#prepare");
   const installButton = document.querySelector("#install");
+  let deliveryInProgress = false;
+  let lastAutomaticAttempt = 0;
 
   const setStatus = (message) => { status.textContent = message; };
   const openDb = () => new Promise((resolve, reject) => {
@@ -43,7 +45,7 @@
 
   const showCached = (cached) => {
     if (!cached) return false;
-    setStatus(`Ready on this phone: Jake’s ${cached.manifest.version} interface.`);
+    setStatus(`Ready on this phone: Jake’s ${cached.manifest.version} interface. Join ComplexControl; this page will hand it to the Pi automatically when you return.`);
     details.textContent = `Published ${cached.manifest.created_at} · ${(cached.capsule.byteLength / 1048576).toFixed(1)} MB · ${cached.manifest.site_commit.slice(0, 12)}`;
     installButton.disabled = false;
     prepareButton.textContent = "Refresh latest update";
@@ -73,7 +75,7 @@
       const cached = await readCached().catch(() => null);
       if (cached) {
         showCached(cached);
-        setStatus(`Offline—keeping the prepared ${cached.manifest.version} interface on this phone.`);
+        setStatus(`Offline—keeping the prepared ${cached.manifest.version} interface and looking for the Pi.`);
       } else {
         setStatus(error instanceof Error ? error.message : "The update could not be prepared.");
       }
@@ -82,26 +84,44 @@
     }
   };
 
-  installButton.addEventListener("click", async () => {
-    const receiver = window.open(`${CONTROLLER_ORIGIN}/field-update-receiver.html`, "_blank");
-    if (!receiver) {
-      setStatus("Allow the controller window to open, then try again.");
+  const deliverToPi = async ({ automatic = false } = {}) => {
+    if (deliveryInProgress) return;
+    if (automatic && Date.now() - lastAutomaticAttempt < 5000) return;
+    lastAutomaticAttempt = Date.now();
+    const cached = await readCached().catch(() => null);
+    if (!cached) {
+      if (!automatic) setStatus("No update is prepared. Reconnect to cellular data and prepare the latest interface first.");
       return;
     }
-    setStatus("Connecting to the Pi. Keep this page open…");
+    const receiver = window.open(`${CONTROLLER_ORIGIN}/field-update-receiver.html`, "complex-control-field-receiver");
+    if (!receiver) {
+      setStatus("Safari blocked the automatic Pi window. Tap the button below once to finish the handoff.");
+      installButton.textContent = "Safari blocked auto-update — tap to finish";
+      installButton.disabled = false;
+      return;
+    }
+    deliveryInProgress = true;
+    installButton.disabled = true;
+    setStatus("Connected to ComplexControl. Sending Jake’s prepared interface to the Pi…");
+    const finish = () => {
+      deliveryInProgress = false;
+      installButton.disabled = false;
+    };
     const deadline = window.setTimeout(() => {
-      setStatus("The Pi did not answer. Confirm this phone is connected to ComplexControl, then try again.");
-    }, 15000);
-    const onReady = async (event) => {
+      window.removeEventListener("message", onMessage);
+      finish();
+      setStatus("The Pi did not answer. Confirm this phone is connected to ComplexControl, then use the finish button.");
+    }, 18000);
+    const onMessage = async (event) => {
       if (event.origin !== CONTROLLER_ORIGIN || event.source !== receiver) return;
-      if (event.data?.type !== "complex-control-field-receiver-ready") return;
-      window.clearTimeout(deadline);
-      window.removeEventListener("message", onReady);
-      const cached = await readCached();
-      if (!cached) {
-        setStatus("No prepared update remains on this phone. Reconnect to cellular and prepare it again.");
+      if (event.data?.type === "complex-control-field-update-complete") {
+        window.clearTimeout(deadline);
+        window.removeEventListener("message", onMessage);
+        finish();
+        setStatus(`Jake’s ${cached.manifest.version} interface is installed and healthy on the Pi.`);
         return;
       }
+      if (event.data?.type !== "complex-control-field-receiver-ready") return;
       receiver.postMessage(
         {
           type: "complex-control-field-capsule",
@@ -115,12 +135,24 @@
         CONTROLLER_ORIGIN,
         [cached.capsule, cached.signature],
       );
-      setStatus("Update delivered to the Pi. Continue in the controller window.");
+      setStatus("Update delivered. The Pi is verifying and installing it automatically…");
     };
-    window.addEventListener("message", onReady);
-  });
+    window.addEventListener("message", onMessage);
+  };
 
+  const tryAutomaticHandoff = () => {
+    if (document.visibilityState !== "visible") return;
+    window.setTimeout(() => void deliverToPi({ automatic: true }), 450);
+  };
+
+  installButton.addEventListener("click", () => void deliverToPi());
   prepareButton.addEventListener("click", () => void prepareLatest());
+  window.addEventListener("focus", tryAutomaticHandoff);
+  window.addEventListener("pageshow", tryAutomaticHandoff);
+  window.addEventListener("online", tryAutomaticHandoff);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") tryAutomaticHandoff();
+  });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js").catch(() => undefined);
   void readCached().then((cached) => {
     if (cached) showCached(cached);

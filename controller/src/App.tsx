@@ -14,6 +14,7 @@ import type {
   EventSnapshot,
   EventSummary,
   EventView,
+  RaceFormat,
   RaceSnapshot,
   RacerProfile,
 } from "./types";
@@ -57,7 +58,7 @@ function previewEvents(): EventSummary[] {
       id: String(value.id ?? `preview-event-${index}`),
       name: String(value.name ?? "Preview Race"),
       location: typeof value.location === "string" ? value.location : null,
-      format: "HEATS",
+      format: (typeof value.format === "string" ? value.format : "HEATS") as RaceFormat,
       status: "ACTIVE",
       racer_count: Array.isArray(value.schedule) ? value.schedule.length : Number(value.racer_count ?? 0),
       race_count: Array.isArray(value.schedule) ? value.schedule.length : Number(value.race_count ?? 0),
@@ -67,6 +68,17 @@ function previewEvents(): EventSummary[] {
   } catch {
     return [];
   }
+}
+
+function projectedRaceCount(payload: EventCreate): number {
+  const racers = Math.max(1, payload.racers.length);
+  if (["QUALIFYING_PRACTICE", "KNOCKOUT"].includes(payload.format)) return 1;
+  if (payload.format === "HEATS") return Math.min(payload.heat_count, racers) + (payload.lcq_enabled ? Math.min(payload.lcq_count, racers) : 0) + 1;
+  if (payload.format === "TRIPLE_ELIMINATION") return Math.min(payload.heat_count, racers) + Math.min(payload.mode_config.second_chance_count, racers) + Math.min(payload.mode_config.last_chance_count, racers) + 1;
+  if (payload.format === "TEAM_RACE") return payload.mode_config.team_race_count;
+  if (payload.format === "BARREL_RACING") return racers * payload.mode_config.barrel_rounds * payload.mode_config.barrel_races_per_round;
+  if (payload.format === "DOUBLE_ELIMINATION") return Math.max(1, racers * 2 - 1);
+  return Math.max(1, racers - 1);
 }
 
 export default function App() {
@@ -149,7 +161,7 @@ export default function App() {
         format: payload.format,
         status: "ACTIVE",
         racer_count: payload.racers.length,
-        race_count: payload.format === "HEATS" ? payload.heat_count + payload.lcq_count + 1 : Math.max(1, payload.racers.length - 1),
+        race_count: projectedRaceCount(payload),
         created_at: new Date().toISOString(),
         completed_at: null,
       };
