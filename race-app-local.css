@@ -101,6 +101,36 @@ body[data-race-control="true"] .race-v2-control-label{color:#ef3340}body[data-ra
 .local-home-story-hero{background:linear-gradient(95deg,#6f0c16 3%,#e22b3d 34%,#ff6874 52%,#bd1829 72%,#5c0912 97%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .race-v2-barrel-classic-score{display:block;margin-top:7px;color:#d9d9d9;font-size:.88rem;line-height:1.35;font-weight:400}
 .race-v2-field input:disabled{opacity:.6;cursor:not-allowed;background:#242424;color:#aaa}
+.race-v2-create-heading{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}.race-v2-create-heading h2{margin-bottom:4px}.race-v2-create-heading p{margin:0 0 10px;color:#f0b8bd;font-size:.95rem}@media(max-width:700px){.race-v2-create-heading{display:block}.race-v2-create-heading p{line-height:1.35}}
+.local-home-story-intro{max-width:1050px;margin:0 auto 18px;padding:16px 22px;text-align:center;color:#f4f4f4;font:700 clamp(1.05rem,2vw,1.55rem)/1.5 Arial,sans-serif;letter-spacing:.01em;background:linear-gradient(90deg,rgba(103,10,20,.28),rgba(20,20,20,.92),rgba(103,10,20,.28));border-top:1px solid #8e2430;border-bottom:1px solid #8e2430}@media(max-width:700px){.local-home-story-intro{margin-bottom:12px;padding:13px 12px;font-size:1rem;line-height:1.45}}
+.local-home-story>.local-home-shop-icon{display:flex;justify-content:center;width:max-content;margin:10px auto 0;padding:12px 22px}
+.local-simulator-link{color:#ff5362;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}.local-simulator-link:hover,.local-simulator-link:focus{color:#fff}
 .local-product-copy.local-home-story-active{margin-top:-92px!important}.local-home-story-hero{font-size:clamp(2rem,5vw,4.8rem)!important;line-height:.88!important}@media(max-width:700px){.local-product-copy.local-home-story-active{margin-top:-92px!important}.local-home-story-hero{font-size:clamp(2rem,5vw,4.8rem)!important}}
 .local-home-story-hero{position:relative;z-index:1}@media(max-width:700px){.local-product-copy.local-home-story-active{margin-top:8px!important}.local-home-story-hero{padding:0 8px;font-size:clamp(1.55rem,7vw,2.35rem)!important;line-height:1!important}}
+
+/* Keep the first home-page headline fully inside the viewport on every load. */
+body:not([data-race-control="true"]) .local-product-copy.local-home-story-active{
+  margin:24px auto 0!important;
+  padding-top:18px!important;
+}
+body:not([data-race-control="true"]) .local-home-story-hero{
+  position:static;
+  overflow:visible;
+  padding:.08em 0 .14em;
+  line-height:1!important;
+}
+@media(max-width:700px){
+  body:not([data-race-control="true"]) .local-product-copy.local-home-story-active{
+    margin:14px auto 0!important;
+    padding-top:14px!important;
+  }
+  body:not([data-race-control="true"]) .local-home-story-hero{
+    font-size:clamp(1.55rem,7vw,2.35rem)!important;
+    line-height:1.08!important;
+    padding:.1em 8px .16em;
+  }
+}
 #v2-fields>.race-v2-checkbox,#v2-fields>.race-v2-lapping-toggle{grid-column:1/-1;width:100%;box-sizing:border-box}#v2-fields>.race-v2-checkbox{margin:4px 0 0;padding:12px 14px;border-top:1px solid #4a4a4a;border-bottom:1px solid #333;background:#141414;border-radius:6px}
+/* The race-hub return action belongs only to the Race Control header. */
+body:not([data-race-control="true"]) #race-v2-back-hub{display:none!important}
+.race-v2-back-to-top{background:#1768cc}
