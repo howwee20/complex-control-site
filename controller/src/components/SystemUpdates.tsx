@@ -70,9 +70,9 @@ export function SystemUpdates({ busy, onBusy, onError }: SystemUpdatesProps) {
           <p className="update-message">{frontend?.message ?? "Checking the installed interface…"}</p>
           {frontend?.current && <small>Installed: {frontend.current.version}</small>}
         </div>
-        <a className="primary-button update-link" href="https://mycomplexcontrol.com/field-update.html">Prepare latest on this phone</a>
+        <a className="primary-button update-link" href="https://mycomplexcontrol.com/field-update.html">Open Update Pi</a>
       </div>
-      <p className="update-note">Prepare while cellular data is available, join ComplexControl, then return to the prepared page. It hands a newer interface to the Pi automatically; the Pi verifies, installs, and health-checks it. Safari shows one finish button only if it blocks the local controller window. A race must be stopped first; failed updates roll back automatically.</p>
+      <p className="update-note">After the one-time phone setup, open Update Pi and tap its single button while you are near the powered controller. The phone gets Jake’s newest signed interface over cellular, transfers it over ComplexControl, and the Pi verifies, installs, and health-checks it. A race must be stopped first; failed updates roll back automatically.</p>
       <details className="recovery-update">
         <summary>Advanced full-controller recovery</summary>
         <div className="update-card">
