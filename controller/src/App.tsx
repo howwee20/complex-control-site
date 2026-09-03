@@ -405,7 +405,7 @@ export default function App() {
         )}
 
         {access === "open" && screen === "updates" && (
-          <SystemUpdates busy={busy} onBusy={setBusy} onError={setError} />
+          <SystemUpdates onError={setError} />
         )}
       </main>
       {pinDialog && <OperatorPinChange busy={busy} onClose={() => setPinDialog(false)} onChange={(currentPin, newPin) => void guarded(async () => {

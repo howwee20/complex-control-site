@@ -283,6 +283,8 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 
 .updates-shell { width: min(1120px,calc(100% - 48px)); margin: 72px auto; }
 .update-card { display: grid; grid-template-columns: 1fr auto auto; align-items: end; gap: 24px; padding: 28px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 18px; background: var(--panel); }
+.update-card-simple { grid-template-columns: 1fr; align-items: stretch; }
+.update-card-simple .update-message { margin: 0; text-align: center; }
 .update-card h3,.update-card p { margin: 0 0 10px; }.update-card code { font: inherit; font-weight: 700; }.update-message { color: var(--accent); font-weight: 700; }
 .update-state { text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }.update-state.failed,.update-state.error { color: #c20f2f; }.update-state.complete { color: #16704c; }
 .release-picker { min-width: 210px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-weight: 700; }.release-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; }

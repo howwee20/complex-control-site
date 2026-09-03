@@ -7,9 +7,7 @@
   const CONTROLLER_ORIGIN = "http://10.42.0.1:8000";
   const RECEIVER_URL = `${CONTROLLER_ORIGIN}/field-update-receiver.html`;
   const status = document.querySelector("#status");
-  const details = document.querySelector("#details");
   const updateButton = document.querySelector("#prepare");
-  const retryButton = document.querySelector("#install");
   let updateInProgress = false;
 
   const setStatus = (message) => { status.textContent = message; };
@@ -44,12 +42,8 @@
     return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
   };
 
-  const describe = (cached) => {
-    details.textContent = `Jake’s ${cached.manifest.version} interface · Published ${cached.manifest.created_at} · ${(cached.capsule.byteLength / 1048576).toFixed(1)} MB`;
-  };
-
   const downloadLatest = async () => {
-    setStatus("Getting Jake’s newest approved interface over cellular…");
+    setStatus("Downloading latest update…");
     try {
       const manifestResponse = await fetch("/field/latest.json", { cache: "no-store" });
       if (!manifestResponse.ok) throw new Error("Latest release manifest is unavailable");
@@ -65,13 +59,11 @@
       if (signature.byteLength !== 64) throw new Error("Downloaded update signature is invalid");
       const cached = { manifest, capsule, signature, cached_at: new Date().toISOString() };
       await writeCached(cached);
-      describe(cached);
       return cached;
     } catch (error) {
       const cached = await readCached().catch(() => null);
       if (!cached) throw error;
-      setStatus(`Cellular is unavailable. Using the prepared ${cached.manifest.version} interface already on this phone…`);
-      describe(cached);
+      setStatus(`Using ${cached.manifest.version} already downloaded to this phone…`);
       return cached;
     }
   };
@@ -136,21 +128,17 @@
     if (updateInProgress) return;
     const receiver = openReceiverFromTap();
     if (!receiver) {
-      setStatus("Safari blocked the Pi window. Allow pop-ups for this page, then tap Update Pi again.");
-      retryButton.hidden = false;
-      retryButton.disabled = false;
+      setStatus("Allow pop-ups, then tap Update Pi again.");
       return;
     }
 
     updateInProgress = true;
     updateButton.disabled = true;
-    retryButton.disabled = true;
-    retryButton.hidden = true;
     try {
       const cached = await downloadLatest();
-      setStatus("Newest interface secured. Connecting to the Pi over ComplexControl…");
+      setStatus("Connecting to the Pi…");
       await deliver(cached, receiver);
-      setStatus(`Done. Jake’s ${cached.manifest.version} interface is installed and healthy on the Pi.`);
+      setStatus(`Last update: ${cached.manifest.version} · Successful`);
       updateButton.textContent = "Pi is up to date";
     } catch (error) {
       try { receiver.close(); } catch { /* The local receiver may already have closed itself. */ }
@@ -159,19 +147,16 @@
     } finally {
       updateInProgress = false;
       updateButton.disabled = false;
-      retryButton.disabled = false;
     }
   };
 
   updateButton.addEventListener("click", () => void updatePi());
-  retryButton.addEventListener("click", () => void updatePi());
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js").catch(() => undefined);
   void readCached().then((cached) => {
     if (!cached) {
       setStatus("Ready. Walk within range of the powered Pi and tap Update Pi.");
       return;
     }
-    describe(cached);
-    setStatus("Ready. Tap Update Pi to get the newest release and install it.");
+    setStatus(`Ready. Last downloaded: ${cached.manifest.version}`);
   });
 })();
