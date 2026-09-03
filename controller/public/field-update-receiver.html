@@ -46,11 +46,11 @@
                 setStatus(`Last update: ${prepared.version} · Successful`);
                 window.opener?.postMessage({ type: "complex-control-field-update-complete", version: prepared.version }, SOURCE_ORIGIN);
               } else {
-                setStatus(`Jake’s ${prepared.version} interface is verified and will install automatically.`);
+                setStatus(`${prepared.version} is verified and will install automatically.`);
                 void installPrepared();
               }
             } catch {
-              setStatus(`Jake’s ${prepared.version} interface is verified and will install automatically.`);
+              setStatus(`${prepared.version} is verified and will install automatically.`);
               void installPrepared();
             }
           }
@@ -91,7 +91,7 @@
                 return;
               }
               if (update.state === "complete" && update.current?.version === prepared.version) {
-                setStatus("Installed and healthy. Opening Jake’s newest controller…");
+                setStatus("Installed and healthy. Opening controller…");
                 window.opener?.postMessage({ type: "complex-control-field-update-complete", version: prepared.version }, SOURCE_ORIGIN);
                 window.setTimeout(() => window.location.replace("/"), 900);
                 return;
