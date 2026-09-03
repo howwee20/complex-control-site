@@ -222,7 +222,7 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
   --green: #35c88a;
   --yellow: #f0ba3e;
   --red: #ff505f;
-  --handoff-heading-color: #ff4fa3;
+  --handoff-heading-color: #ffffff;
   color: #f5f1f2;
   background: #070707;
 }
