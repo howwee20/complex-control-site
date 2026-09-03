@@ -358,7 +358,7 @@ export default function App() {
           </>
         )}
 
-        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} />}
+        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} hardwareAvailable={!publicPreview} />}
 
         {access === "open" && screen === "event" && event && <EventControl event={event} busy={busy} readerEvent={readerEvent} onOpenRace={openRace} onAdvance={() => guarded(async () => setEvent(await api.advanceEvent(event.id)))} />}
 

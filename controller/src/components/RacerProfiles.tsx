@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { EventView, RacerProfile } from "../types";
 
 type ProfileInput = Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">;
@@ -10,20 +10,53 @@ interface Props {
   onCreate: (profile: ProfileInput) => Promise<void>;
   onUpdate: (profileId: string, profile: ProfileInput) => Promise<void>;
   onDelete: (profileId: string) => Promise<void>;
+  hardwareAvailable: boolean;
 }
 
 const emptyProfile = (): ProfileInput => ({ driver_name: "", kart_number: "", tag_id: "" });
 
-export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate, onDelete }: Props) {
+export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate, onDelete, hardwareAvailable }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ProfileInput>(emptyProfile);
   const [scanAfter, setScanAfter] = useState<string | null | undefined>(undefined);
+  const [calibration, setCalibration] = useState<{ profileId: string; after: string | null } | null>(null);
+  const holdTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (scanAfter === undefined || !readerEvent || readerEvent.id === scanAfter) return;
     setDraft((current) => ({ ...current, tag_id: readerEvent.tag_id }));
     setScanAfter(undefined);
   }, [readerEvent?.id, scanAfter]);
+
+  useEffect(() => {
+    if (!calibration || !readerEvent || readerEvent.id === calibration.after) return;
+    const profile = profiles.find((candidate) => candidate.id === calibration.profileId);
+    if (!profile) {
+      setCalibration(null);
+      return;
+    }
+    setCalibration(null);
+    void onUpdate(profile.id, {
+      driver_name: profile.driver_name,
+      kart_number: profile.kart_number,
+      tag_id: readerEvent.tag_id,
+    });
+  }, [calibration, onUpdate, profiles, readerEvent]);
+
+  const beginCalibrationHold = (profileId: string) => {
+    if (!hardwareAvailable || busy) return;
+    if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(() => {
+      holdTimer.current = null;
+      setCalibration({ profileId, after: readerEvent?.id ?? null });
+    }, 2000);
+  };
+
+  const cancelCalibrationHold = () => {
+    if (holdTimer.current === null) return;
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
 
   const reset = () => {
     setEditingId(null);
@@ -75,6 +108,17 @@ export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate,
           <article key={profile.id}>
             <span className="profile-number">#{profile.kart_number}</span>
             <div><strong>{profile.driver_name}</strong><small>{profile.tag_id}</small></div>
+            <button
+              className={calibration?.profileId === profile.id ? "calibrate-button waiting" : "calibrate-button"}
+              type="button"
+              disabled={busy || !hardwareAvailable}
+              onPointerDown={() => beginCalibrationHold(profile.id)}
+              onPointerUp={cancelCalibrationHold}
+              onPointerLeave={cancelCalibrationHold}
+              onPointerCancel={cancelCalibrationHold}
+            >
+              {!hardwareAvailable ? "Available at track" : calibration?.profileId === profile.id ? "Scan transponder…" : "Hold to Calibrate"}
+            </button>
             <button className="secondary-button" type="button" onClick={() => { setEditingId(profile.id); setDraft(profile); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
             <button className="danger-button" type="button" disabled={busy} onClick={() => {
               if (window.confirm(`Delete ${profile.driver_name}'s racer profile?`)) void onDelete(profile.id);

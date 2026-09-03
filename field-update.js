@@ -1,15 +1,16 @@
 (() => {
   "use strict";
+
   const DB_NAME = "complex-control-field-updates";
   const STORE = "capsules";
   const KEY = "latest";
   const CONTROLLER_ORIGIN = "http://10.42.0.1:8000";
+  const RECEIVER_URL = `${CONTROLLER_ORIGIN}/field-update-receiver.html`;
   const status = document.querySelector("#status");
   const details = document.querySelector("#details");
-  const prepareButton = document.querySelector("#prepare");
-  const installButton = document.querySelector("#install");
-  let deliveryInProgress = false;
-  let lastAutomaticAttempt = 0;
+  const updateButton = document.querySelector("#prepare");
+  const retryButton = document.querySelector("#install");
+  let updateInProgress = false;
 
   const setStatus = (message) => { status.textContent = message; };
   const openDb = () => new Promise((resolve, reject) => {
@@ -43,18 +44,12 @@
     return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
   };
 
-  const showCached = (cached) => {
-    if (!cached) return false;
-    setStatus(`Ready on this phone: Jake’s ${cached.manifest.version} interface. Join ComplexControl; this page will hand it to the Pi automatically when you return.`);
-    details.textContent = `Published ${cached.manifest.created_at} · ${(cached.capsule.byteLength / 1048576).toFixed(1)} MB · ${cached.manifest.site_commit.slice(0, 12)}`;
-    installButton.disabled = false;
-    prepareButton.textContent = "Refresh latest update";
-    return true;
+  const describe = (cached) => {
+    details.textContent = `Jake’s ${cached.manifest.version} interface · Published ${cached.manifest.created_at} · ${(cached.capsule.byteLength / 1048576).toFixed(1)} MB`;
   };
 
-  const prepareLatest = async () => {
-    prepareButton.disabled = true;
-    setStatus("Downloading and verifying Jake’s latest interface…");
+  const downloadLatest = async () => {
+    setStatus("Getting Jake’s newest approved interface over cellular…");
     try {
       const manifestResponse = await fetch("/field/latest.json", { cache: "no-store" });
       if (!manifestResponse.ok) throw new Error("Latest release manifest is unavailable");
@@ -70,58 +65,53 @@
       if (signature.byteLength !== 64) throw new Error("Downloaded update signature is invalid");
       const cached = { manifest, capsule, signature, cached_at: new Date().toISOString() };
       await writeCached(cached);
-      showCached(cached);
+      describe(cached);
+      return cached;
     } catch (error) {
       const cached = await readCached().catch(() => null);
-      if (cached) {
-        showCached(cached);
-        setStatus(`Offline—keeping the prepared ${cached.manifest.version} interface and looking for the Pi.`);
-      } else {
-        setStatus(error instanceof Error ? error.message : "The update could not be prepared.");
-      }
-    } finally {
-      prepareButton.disabled = false;
+      if (!cached) throw error;
+      setStatus(`Cellular is unavailable. Using the prepared ${cached.manifest.version} interface already on this phone…`);
+      describe(cached);
+      return cached;
     }
   };
 
-  const deliverToPi = async ({ automatic = false } = {}) => {
-    if (deliveryInProgress) return;
-    if (automatic && Date.now() - lastAutomaticAttempt < 5000) return;
-    lastAutomaticAttempt = Date.now();
-    const cached = await readCached().catch(() => null);
-    if (!cached) {
-      if (!automatic) setStatus("No update is prepared. Reconnect to cellular data and prepare the latest interface first.");
-      return;
+  const openReceiverFromTap = () => {
+    // Open synchronously from the tap so Safari keeps the user gesture while
+    // the cellular download is in progress.
+    const receiver = window.open("about:blank", "complex-control-field-receiver");
+    if (!receiver) return null;
+    try {
+      receiver.document.title = "Connecting to Complex Control";
+      receiver.document.body.innerHTML = "<p style='font:700 20px system-ui;padding:30px'>Connecting to the Pi…</p>";
+    } catch {
+      // A receiver left open from an earlier run can already be cross-origin.
     }
-    const receiver = window.open(`${CONTROLLER_ORIGIN}/field-update-receiver.html`, "complex-control-field-receiver");
-    if (!receiver) {
-      setStatus("Safari blocked the automatic Pi window. Tap the button below once to finish the handoff.");
-      installButton.textContent = "Safari blocked auto-update — tap to finish";
-      installButton.disabled = false;
-      return;
-    }
-    deliveryInProgress = true;
-    installButton.disabled = true;
-    setStatus("Connected to ComplexControl. Sending Jake’s prepared interface to the Pi…");
-    const finish = () => {
-      deliveryInProgress = false;
-      installButton.disabled = false;
-    };
+    return receiver;
+  };
+
+  const deliver = (cached, receiver) => new Promise((resolve, reject) => {
+    let sent = false;
     const deadline = window.setTimeout(() => {
       window.removeEventListener("message", onMessage);
-      finish();
-      setStatus("The Pi did not answer. Confirm this phone is connected to ComplexControl, then use the finish button.");
-    }, 18000);
-    const onMessage = async (event) => {
+      reject(new Error("The Pi did not answer. Confirm the phone joined ComplexControl and tap Update Pi again."));
+    }, 30000);
+
+    const finish = (error) => {
+      window.clearTimeout(deadline);
+      window.removeEventListener("message", onMessage);
+      if (error) reject(error);
+      else resolve();
+    };
+
+    const onMessage = (event) => {
       if (event.origin !== CONTROLLER_ORIGIN || event.source !== receiver) return;
       if (event.data?.type === "complex-control-field-update-complete") {
-        window.clearTimeout(deadline);
-        window.removeEventListener("message", onMessage);
         finish();
-        setStatus(`Jake’s ${cached.manifest.version} interface is installed and healthy on the Pi.`);
         return;
       }
-      if (event.data?.type !== "complex-control-field-receiver-ready") return;
+      if (event.data?.type !== "complex-control-field-receiver-ready" || sent) return;
+      sent = true;
       receiver.postMessage(
         {
           type: "complex-control-field-capsule",
@@ -135,27 +125,53 @@
         CONTROLLER_ORIGIN,
         [cached.capsule, cached.signature],
       );
-      setStatus("Update delivered. The Pi is verifying and installing it automatically…");
+      setStatus("Update delivered. The Pi is verifying, installing, and health-checking it…");
     };
+
     window.addEventListener("message", onMessage);
-  };
-
-  const tryAutomaticHandoff = () => {
-    if (document.visibilityState !== "visible") return;
-    window.setTimeout(() => void deliverToPi({ automatic: true }), 450);
-  };
-
-  installButton.addEventListener("click", () => void deliverToPi());
-  prepareButton.addEventListener("click", () => void prepareLatest());
-  window.addEventListener("focus", tryAutomaticHandoff);
-  window.addEventListener("pageshow", tryAutomaticHandoff);
-  window.addEventListener("online", tryAutomaticHandoff);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") tryAutomaticHandoff();
+    receiver.location.replace(RECEIVER_URL);
   });
+
+  const updatePi = async () => {
+    if (updateInProgress) return;
+    const receiver = openReceiverFromTap();
+    if (!receiver) {
+      setStatus("Safari blocked the Pi window. Allow pop-ups for this page, then tap Update Pi again.");
+      retryButton.hidden = false;
+      retryButton.disabled = false;
+      return;
+    }
+
+    updateInProgress = true;
+    updateButton.disabled = true;
+    retryButton.disabled = true;
+    retryButton.hidden = true;
+    try {
+      const cached = await downloadLatest();
+      setStatus("Newest interface secured. Connecting to the Pi over ComplexControl…");
+      await deliver(cached, receiver);
+      setStatus(`Done. Jake’s ${cached.manifest.version} interface is installed and healthy on the Pi.`);
+      updateButton.textContent = "Pi is up to date";
+    } catch (error) {
+      try { receiver.close(); } catch { /* The local receiver may already have closed itself. */ }
+      setStatus(error instanceof Error ? error.message : "The update could not be completed.");
+      updateButton.textContent = "Try Update Pi again";
+    } finally {
+      updateInProgress = false;
+      updateButton.disabled = false;
+      retryButton.disabled = false;
+    }
+  };
+
+  updateButton.addEventListener("click", () => void updatePi());
+  retryButton.addEventListener("click", () => void updatePi());
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js").catch(() => undefined);
   void readCached().then((cached) => {
-    if (cached) showCached(cached);
-    void prepareLatest();
+    if (!cached) {
+      setStatus("Ready. Walk within range of the powered Pi and tap Update Pi.");
+      return;
+    }
+    describe(cached);
+    setStatus("Ready. Tap Update Pi to get the newest release and install it.");
   });
 })();
