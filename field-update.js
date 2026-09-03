@@ -84,16 +84,28 @@
 
   const deliver = (cached, receiver) => new Promise((resolve, reject) => {
     let sent = false;
+    let receiverReady = false;
+    let retryTimer = null;
     const deadline = window.setTimeout(() => {
-      window.removeEventListener("message", onMessage);
-      reject(new Error("The Pi did not answer. Confirm the phone joined ComplexControl and tap Update Pi again."));
-    }, 30000);
+      finish(new Error("Could not reach the Pi. Stay connected to ComplexControl and tap Update Pi again."));
+    }, 120000);
 
     const finish = (error) => {
       window.clearTimeout(deadline);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
       window.removeEventListener("message", onMessage);
       if (error) reject(error);
       else resolve();
+    };
+
+    const connect = () => {
+      if (receiverReady) return;
+      try {
+        receiver.location.replace(`${RECEIVER_URL}?connect=${Date.now()}`);
+      } catch {
+        // Safari can briefly reject navigation while changing Wi-Fi routes.
+      }
+      retryTimer = window.setTimeout(connect, 4000);
     };
 
     const onMessage = (event) => {
@@ -103,6 +115,8 @@
         return;
       }
       if (event.data?.type !== "complex-control-field-receiver-ready" || sent) return;
+      receiverReady = true;
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
       sent = true;
       receiver.postMessage(
         {
@@ -121,7 +135,7 @@
     };
 
     window.addEventListener("message", onMessage);
-    receiver.location.replace(RECEIVER_URL);
+    connect();
   });
 
   const updatePi = async () => {
