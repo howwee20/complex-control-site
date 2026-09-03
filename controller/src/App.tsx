@@ -298,7 +298,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell trackside-ui">
+    <div className={`app-shell trackside-ui screen-${screen}`}>
       <header className="topbar">
         <a
           className="wordmark"

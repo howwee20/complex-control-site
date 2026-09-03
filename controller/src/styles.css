@@ -223,6 +223,7 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
   --yellow: #f0ba3e;
   --red: #ff505f;
   --handoff-heading-color: #ffffff;
+  --handoff-profiles-background: #ffd400;
   color: #f5f1f2;
   background: #070707;
 }
@@ -232,6 +233,10 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .trackside-ui nav button:hover { color: #ffffff; }
 .trackside-ui nav button.active { color: #ff8993; border-bottom-color: #db2637; }
 .trackside-ui main { background: #070707; }
+.trackside-ui.screen-profiles main { background: var(--handoff-profiles-background); }
+.trackside-ui.screen-profiles .profiles-shell > .section-heading h2,
+.trackside-ui.screen-profiles .profiles-shell .section-copy,
+.trackside-ui.screen-profiles .profiles-shell .quiet-label { color: #111111; }
 .trackside-ui .section-heading h2 { color: var(--handoff-heading-color); }
 .trackside-ui .setup-shell,.trackside-ui .history-shell { max-width: 1280px; }
 .trackside-ui .setup-shell > .section-heading h2 { font-size: clamp(2.2rem,4vw,3.7rem); text-transform: uppercase; letter-spacing: -.025em; }
