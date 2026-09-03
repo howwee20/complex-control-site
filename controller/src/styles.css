@@ -344,12 +344,16 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .profile-editor-heading span { color: #9f9799; font-size: .7rem; }
 .profile-form-actions { display: flex; gap: 8px; }
 .profile-list { overflow: hidden; }
-.profile-list article { display: grid; grid-template-columns: 74px 1fr auto auto; gap: 13px; align-items: center; padding: 16px 20px; border-bottom: 1px solid #352c2f; }
+.profile-list article { display: grid; grid-template-columns: 74px 1fr auto auto auto; gap: 13px; align-items: center; padding: 16px 20px; border-bottom: 1px solid #352c2f; }
 .profile-list article:last-child { border-bottom: 0; }
 .profile-number { color: #f17c87; font: 800 1.05rem var(--font-display); }
 .profile-list strong,.profile-list small { display: block; }
 .profile-list strong { color: #fff; }
 .profile-list small { margin-top: 3px; color: #938b8e; }
+.calibrate-button { position: relative; overflow: hidden; min-width: 148px; border: 1px solid #8d3b47; border-radius: 7px; background: #251619; color: #f4d9dc; padding: 10px 13px; font-weight: 800; cursor: pointer; touch-action: none; }
+.calibrate-button:active:not(:disabled) { background: #6f1724; }
+.calibrate-button.waiting { border-color: #d82032; background: #d82032; color: #fff; }
+.calibrate-button:disabled { opacity: .5; cursor: not-allowed; }
 .mode-instructions { display: grid; grid-template-columns: minmax(180px,.5fr) 1fr; gap: 18px; align-items: center; padding: 18px 22px; border: 1px solid #4a2b31; border-left: 4px solid #d82032; border-radius: 12px; background: #111011; }
 .mode-instructions h3,.mode-instructions p { margin: 4px 0 0; }
 .mode-instructions p { color: var(--muted); font-size: .75rem; line-height: 1.5; }

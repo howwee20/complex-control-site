@@ -1,0 +1,17 @@
+{
+  "name": "Update Complex Control",
+  "short_name": "Update Pi",
+  "start_url": "/field-update.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#0c1117",
+  "icons": [
+    {
+      "src": "/assets/cc-logo-mobile.jfif",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

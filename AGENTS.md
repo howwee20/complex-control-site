@@ -6,3 +6,4 @@
 - Preserve `field-update.html`, `field-update.js`, `field-update-sw.js`, and `field-controller-link.js`. They carry signed controller capsules from an Internet-connected phone to the offline Pi.
 - Before merging a production controller change, run the controller tests, TypeScript check, and production build. The Pages workflow repeats those checks and publishes a signed capsule.
 - Do not commit or expose the capsule signing private key. The repository contains only the public verification key through the private controller repository.
+- When Jake describes a website or race-day interface change in plain language, implement it in `controller/`. He should never need to locate deployment files or manually copy a change into a Pi-specific interface.

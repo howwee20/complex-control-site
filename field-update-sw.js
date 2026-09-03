@@ -1,5 +1,5 @@
-const CACHE = "complex-control-field-update-v2";
-const SHELL = ["/field-update.html", "/field-update.js", "/site.webmanifest"];
+const CACHE = "complex-control-field-update-v3";
+const SHELL = ["/field-update.html", "/field-update.js", "/field-update.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));

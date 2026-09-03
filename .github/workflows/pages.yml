@@ -29,11 +29,13 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: controller/package-lock.json
-      - name: Verify and build the real field controller
+      - name: Verify and build the shared website and field controller
         run: |
           npm ci --prefix controller
           npm run test --prefix controller
           npm run typecheck --prefix controller
+          VITE_PUBLIC_PREVIEW=true npm run build --prefix controller
+          cp -R controller/dist "$RUNNER_TEMP/public-controller-dist"
           npm run build --prefix controller
           cp -R controller/dist "$RUNNER_TEMP/field-controller-dist"
       - name: Build signed phone-carried controller capsule
@@ -53,6 +55,9 @@ jobs:
             --exclude='scripts/' \
             --exclude='README.md' \
             ./ _site/
+          # The same controller source powers the public preview and the Pi.
+          # Root utilities such as the phone updater remain beside the preview.
+          cp -R "$RUNNER_TEMP/public-controller-dist"/. _site/
           python3 scripts/package-field-capsule.py \
             --dist "$RUNNER_TEMP/field-controller-dist" \
             --output _site/field \
