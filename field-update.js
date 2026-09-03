@@ -135,7 +135,8 @@
     updateInProgress = true;
     updateButton.disabled = true;
     try {
-      const cached = await downloadLatest();
+      const cached = await readCached();
+      if (!cached) throw new Error("Open this page with cellular service before updating the Pi.");
       setStatus("Connecting to the Pi…");
       await deliver(cached, receiver);
       setStatus(`Last update: ${cached.manifest.version} · Successful`);
@@ -152,11 +153,13 @@
 
   updateButton.addEventListener("click", () => void updatePi());
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js").catch(() => undefined);
-  void readCached().then((cached) => {
-    if (!cached) {
-      setStatus("Ready. Walk within range of the powered Pi and tap Update Pi.");
-      return;
-    }
-    setStatus(`Ready. Last downloaded: ${cached.manifest.version}`);
-  });
+  updateButton.disabled = true;
+  void downloadLatest()
+    .then((cached) => {
+      setStatus(`Ready: ${cached.manifest.version}`);
+    })
+    .catch((error) => {
+      setStatus(error instanceof Error ? error.message : "Open this page with cellular service.");
+    })
+    .finally(() => { updateButton.disabled = false; });
 })();
