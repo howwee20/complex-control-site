@@ -29,13 +29,14 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: controller/package-lock.json
-      - name: Verify and build the field controller
+      - name: Verify and build both website and field controller
         run: |
           npm ci --prefix controller
           npm run test --prefix controller
           npm run typecheck --prefix controller
           npm run build --prefix controller
           cp -R controller/dist "$RUNNER_TEMP/field-controller-dist"
+          VITE_PUBLIC_PREVIEW=true npm run build --prefix controller
       - name: Build signed phone-carried controller capsule
         env:
           FIELD_CAPSULE_SIGNING_KEY_B64: ${{ secrets.FIELD_CAPSULE_SIGNING_KEY_B64 }}
@@ -44,15 +45,9 @@ jobs:
           test -n "$FIELD_CAPSULE_SIGNING_KEY_B64"
           printf '%s' "$FIELD_CAPSULE_SIGNING_KEY_B64" | base64 --decode > "$RUNNER_TEMP/frontend-signing.pem"
           chmod 600 "$RUNNER_TEMP/frontend-signing.pem"
-          mkdir -p _site
-          rsync -a \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='_site/' \
-            --exclude='controller/' \
-            --exclude='scripts/' \
-            --exclude='README.md' \
-            ./ _site/
+          rm -rf _site
+          cp -R controller/dist _site
+          cp CNAME .nojekyll field-update.html field-update.js field-update-sw.js field-update.webmanifest field-controller-link.js _site/
           python3 - <<'PY'
           from pathlib import Path
 

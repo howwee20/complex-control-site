@@ -1,0 +1,17 @@
+{
+  "name": "Complex Control",
+  "short_name": "Complex Control",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c1117",
+  "theme_color": "#0c1117",
+  "icons": [
+    {
+      "src": "/assets/cc-logo-mobile.jfif",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

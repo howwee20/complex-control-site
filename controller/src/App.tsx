@@ -6,6 +6,7 @@ import { PublicDisplay } from "./components/PublicDisplay";
 import { RaceControl } from "./components/RaceControl";
 import { RaceSetup } from "./components/RaceSetup";
 import { RacerProfiles } from "./components/RacerProfiles";
+import { ShopShowcase } from "./components/ShopShowcase";
 import { SystemUpdates } from "./components/SystemUpdates";
 import { formatDate } from "./format";
 import type {
@@ -19,7 +20,7 @@ import type {
   RacerProfile,
 } from "./types";
 
-type Screen = "product" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display";
+type Screen = "product" | "shop" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display";
 type AccessState = "checking" | "open" | "locked";
 
 const publicPreview = import.meta.env.VITE_PUBLIC_PREVIEW === "true";
@@ -84,7 +85,7 @@ function projectedRaceCount(payload: EventCreate): number {
 export default function App() {
   const [screen, setScreen] = useState<Screen>(() => {
     const requestedView = new URLSearchParams(window.location.search).get("view");
-    return requestedView === "product" ? "product" : "setup";
+    return requestedView === "setup" ? "setup" : "product";
   });
   const [savedEvents, setSavedEvents] = useState<EventSummary[]>(() => publicPreview ? previewEvents() : []);
   const [profiles, setProfiles] = useState<RacerProfile[]>(() => publicPreview ? previewProfiles() : []);
@@ -315,9 +316,11 @@ export default function App() {
           {publicPreview && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
           {publicPreview && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
           {publicPreview && <button className={screen === "setup" ? "active" : ""} onClick={openController}>Let's Go Racing</button>}
+          {publicPreview && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop</button>}
           {!publicPreview && access === "open" && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
           {!publicPreview && access === "open" && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
           {!publicPreview && access === "open" && <button className={screen === "setup" || screen === "history" ? "active" : ""} onClick={() => navigate("setup")}>Let's Go Racing</button>}
+          {!publicPreview && access === "open" && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop</button>}
           {!publicPreview && access === "open" && event && <button className={screen === "event" ? "active" : ""} onClick={() => navigate("event")}>Schedule</button>}
           {!publicPreview && access === "open" && race && <button className={screen === "race" ? "active" : ""} onClick={() => setScreen("race")}>Race control</button>}
           {!publicPreview && access === "open" && <button className={screen === "updates" ? "active" : ""} onClick={() => navigate("updates")}>Updates</button>}
@@ -338,10 +341,12 @@ export default function App() {
         })} />}
 
         {access === "open" && screen === "product" && (
-          <Suspense fallback={<div className="product-loading" role="status">Loading product viewer…</div>}>
-            <ProductShowcase onOpenSoftware={openController} />
+          <Suspense fallback={<div className="product-loading" role="status">Loading…</div>}>
+            <ProductShowcase onOpenSoftware={openController} onOpenShop={() => navigate("shop")} />
           </Suspense>
         )}
+
+        {access === "open" && screen === "shop" && <ShopShowcase onOpenSoftware={openController} />}
 
         {access === "open" && screen === "setup" && (
           <>
