@@ -1,7 +1,7 @@
 {
   "name": "Update Complex Control",
   "short_name": "Update Pi",
-  "start_url": "/field-update.html",
+  "start_url": "/field-update.html?updater=6",
   "scope": "/",
   "display": "standalone",
   "background_color": "#080808",

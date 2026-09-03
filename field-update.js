@@ -4,6 +4,8 @@
   const DB_NAME = "complex-control-field-updates";
   const STORE = "capsules";
   const KEY = "latest";
+  const UPDATER_VERSION = "6";
+  const UPDATER_VERSION_KEY = "complex-control-field-updater-version";
   const CONTROLLER_ORIGIN = "http://10.42.0.1:8000";
   const RECEIVER_URL = `${CONTROLLER_ORIGIN}/field-update-receiver.html`;
   const status = document.querySelector("#status");
@@ -37,6 +39,16 @@
     db.close();
     return value;
   };
+  const clearOldCache = async () => {
+    if (localStorage.getItem(UPDATER_VERSION_KEY) === UPDATER_VERSION) return;
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase(DB_NAME);
+      request.onsuccess = resolve;
+      request.onerror = () => reject(request.error);
+      request.onblocked = resolve;
+    });
+    localStorage.setItem(UPDATER_VERSION_KEY, UPDATER_VERSION);
+  };
   const sha256 = async (buffer) => {
     const digest = await crypto.subtle.digest("SHA-256", buffer);
     return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
@@ -45,7 +57,7 @@
   const downloadLatest = async () => {
     setStatus("Downloading latest update…");
     try {
-      const manifestResponse = await fetch("/field/latest.json", { cache: "no-store" });
+      const manifestResponse = await fetch(`/field/latest.json?download=${Date.now()}`, { cache: "no-store" });
       if (!manifestResponse.ok) throw new Error("Latest release manifest is unavailable");
       const manifest = await manifestResponse.json();
       const [capsuleResponse, signatureResponse] = await Promise.all([
@@ -69,17 +81,7 @@
   };
 
   const openReceiverFromTap = () => {
-    // Open synchronously from the tap so Safari keeps the user gesture while
-    // the cellular download is in progress.
-    const receiver = window.open("about:blank", "complex-control-field-receiver");
-    if (!receiver) return null;
-    try {
-      receiver.document.title = "Connecting to Complex Control";
-      receiver.document.body.innerHTML = "<p style='font:700 20px system-ui;padding:30px'>Connecting to the Pi…</p>";
-    } catch {
-      // A receiver left open from an earlier run can already be cross-origin.
-    }
-    return receiver;
+    return window.open(`${RECEIVER_URL}?connect=${Date.now()}`, "complex-control-field-receiver");
   };
 
   const deliver = (cached, receiver) => new Promise((resolve, reject) => {
@@ -166,9 +168,10 @@
   };
 
   updateButton.addEventListener("click", () => void updatePi());
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js").catch(() => undefined);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js?updater=6").catch(() => undefined);
   updateButton.disabled = true;
-  void downloadLatest()
+  void clearOldCache()
+    .then(() => downloadLatest())
     .then((cached) => {
       setStatus(`Ready: ${cached.manifest.version}`);
     })

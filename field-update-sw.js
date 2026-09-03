@@ -1,5 +1,9 @@
-const CACHE = "complex-control-field-update-v5";
-const SHELL = ["/field-update.html", "/field-update.js", "/field-update.webmanifest"];
+const CACHE = "complex-control-field-update-v6";
+const SHELL = [
+  "/field-update.html?updater=6",
+  "/field-update.js?updater=6",
+  "/field-update.webmanifest",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -20,6 +24,13 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/field-update.html"))),
+      .catch(async () => {
+        const cached = await caches.match(event.request, { ignoreSearch: true });
+        if (cached) return cached;
+        if (event.request.mode === "navigate") {
+          return caches.match("/field-update.html?updater=6", { ignoreSearch: true });
+        }
+        return Response.error();
+      }),
   );
 });
