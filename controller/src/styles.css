@@ -220,12 +220,6 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .history-list { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }.history-list > button { width: 100%; display: grid; grid-template-columns: 1.7fr .6fr .5fr .6fr 24px; gap: 15px; align-items: center; padding: 17px 20px; background: transparent; border: 0; border-bottom: 1px solid var(--line); text-align: left; cursor: pointer; }.history-list > button:hover { background: #f6ecdf; }.history-list > button:last-child { border-bottom: 0; }
 .history-list strong,.history-list small { display: block; }.history-list small { color: var(--muted); margin-top: 4px; }.history-list span { color: var(--muted); font-size: .72rem; }.history-list b { color: var(--accent); }.history-status { font-style: normal; font-size: .6rem; }.history-status.active { color: var(--green); }.history-status.completed { color: #bdc8d3; }
 
-.preview-banner { max-width: 1220px; margin: 20px auto -2px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 15px 18px; border: 1px solid #d8cbbb; border-left: 4px solid var(--accent); border-radius: 9px; background: #fffdf8; }
-.preview-banner div { display: flex; flex-direction: column; gap: 3px; }
-.preview-banner strong { color: var(--accent); font: 700 .86rem var(--font-display); text-transform: uppercase; letter-spacing: .035em; }
-.preview-banner span { color: var(--muted); font-size: .72rem; }
-.preview-banner a { flex: 0 0 auto; border-radius: 7px; background: var(--accent); color: white; padding: 10px 14px; font: 700 .7rem var(--font-display); text-decoration: none; text-transform: uppercase; letter-spacing: .035em; }
-.preview-banner a:hover { background: var(--accent-bright); }
 
 /* Trackside operator theme. This restyles the real API-backed application; it does not
    import the browser-only race simulator used by the public design prototype. */
@@ -431,8 +425,6 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
   .public-laps { grid-column: 3; grid-row: 2; }
   .public-last { grid-column: 2; grid-row: 3; }
   .public-best { grid-column: 3; grid-row: 3; }
-  .preview-banner { align-items: stretch; flex-direction: column; margin-top: 12px; }
-  .preview-banner a { text-align: center; }
   .race-plan-preview { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .race-plan-preview > div:nth-child(2) { border-right: 0; }
   .race-plan-preview > div { border-bottom: 1px solid var(--line); }

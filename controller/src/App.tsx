@@ -24,7 +24,6 @@ type Screen = "product" | "shop" | "profiles" | "setup" | "event" | "race" | "hi
 type AccessState = "checking" | "open" | "locked";
 
 const publicPreview = import.meta.env.VITE_PUBLIC_PREVIEW === "true";
-const controllerUrl = import.meta.env.VITE_CONTROLLER_URL || "http://10.42.0.1:8000";
 const previewProfilesKey = "complex-control-racer-profiles";
 const previewEventsKey = "complex-control-created-races-v2";
 const ProductShowcase = lazy(async () => {
@@ -348,20 +347,7 @@ export default function App() {
 
         {access === "open" && screen === "shop" && <ShopShowcase onOpenSoftware={openController} />}
 
-        {access === "open" && screen === "setup" && (
-          <>
-            {publicPreview && (
-              <section className="preview-banner" aria-label="Software preview status">
-                <div>
-                  <strong>Software preview</strong>
-                  <span>Set up the form here. Live timing opens on the controller connected to this Wi-Fi network.</span>
-                </div>
-                <a href={controllerUrl}>Connect hardware</a>
-              </section>
-            )}
-            <RaceSetup busy={busy} readerEvent={readerEvent} profiles={profiles} savedEvents={savedEvents} onCreate={createEvent} onOpen={openEvent} onDuplicate={duplicateEvent} onDelete={deleteEvent} onDeleteAll={deleteAllEvents} />
-          </>
-        )}
+        {access === "open" && screen === "setup" && <RaceSetup busy={busy} readerEvent={readerEvent} profiles={profiles} savedEvents={savedEvents} onCreate={createEvent} onOpen={openEvent} onDuplicate={duplicateEvent} onDelete={deleteEvent} onDeleteAll={deleteAllEvents} />}
 
         {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} hardwareAvailable={!publicPreview} />}
 
