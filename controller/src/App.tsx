@@ -316,11 +316,11 @@ export default function App() {
           {publicPreview && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
           {publicPreview && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
           {publicPreview && <button className={screen === "setup" ? "active" : ""} onClick={openController}>Let's Go Racing</button>}
-          {publicPreview && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop</button>}
+          {publicPreview && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop Now</button>}
           {!publicPreview && access === "open" && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
           {!publicPreview && access === "open" && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
           {!publicPreview && access === "open" && <button className={screen === "setup" || screen === "history" ? "active" : ""} onClick={() => navigate("setup")}>Let's Go Racing</button>}
-          {!publicPreview && access === "open" && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop</button>}
+          {!publicPreview && access === "open" && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop Now</button>}
           {!publicPreview && access === "open" && event && <button className={screen === "event" ? "active" : ""} onClick={() => navigate("event")}>Schedule</button>}
           {!publicPreview && access === "open" && race && <button className={screen === "race" ? "active" : ""} onClick={() => setScreen("race")}>Race control</button>}
           {!publicPreview && access === "open" && <button className={screen === "updates" ? "active" : ""} onClick={() => navigate("updates")}>Updates</button>}
