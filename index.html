@@ -14,7 +14,7 @@
     <title>Complex Control</title>
     <script type="module" crossorigin src="/assets/index-CeBRoNe2.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DmEevroQ.css">
-    <link rel="stylesheet" href="/race-app-local.css?v=20260907-113">
+    <link rel="stylesheet" href="/race-app-local.css?v=20260908-114">
     <style>
       /* Local-only black-and-red lightning background test. */
       :root, body, .app-shell { background-color: #050505; }
@@ -86,7 +86,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script src="/race-app-local.js?v=20260907-113" defer></script>
+    <script src="/race-app-local.js?v=20260908-114" defer></script>
     <script>
       // Local-only fields for reviewing separate LCQ and main-event lap counts.
       (() => {
@@ -163,7 +163,7 @@
           const nav = q('.topbar nav');
           if (nav && !nav.dataset.localNav) { nav.dataset.localNav='1'; const buttons=qa('button',nav); if(buttons[0]) buttons[0].textContent='Racer Profiles'; if(buttons[1]) buttons[1].textContent="Let's Go Racing"; const login=document.createElement('button'); login.textContent='Log In'; nav.append(login); }
           const product = q('.product-shell');
-          if (product && !q('.local-product-copy')) { const copy=document.createElement('section');copy.className='local-product-copy';copy.innerHTML='<h1>Complex Control</h1><h2>ONE SYSTEM FOR ALL YOUR RACING NEEDS!</h2><h2>What\'s Included?</h2><p>All in one box that plugs into a standard 120v outlet. Kit comes with 20 stick-on RFID tags. Just mount the reader above the finish line and go racing.</p><h2>What\'s New?</h2><p>Integrate your track with red, yellow and green lights with a simple plug-in system.</p>';product.parentElement.append(copy); }
+          if (product && !q('.local-product-copy')) { const copy=document.createElement('section');copy.className='local-product-copy';copy.innerHTML='<h2>What\'s Included?</h2><p>All in one box that plugs into a standard 120v outlet. Kit comes with 20 stick-on RFID tags. Just mount the reader above the finish line and go racing.</p><h2>What\'s New?</h2><p>Integrate your track with red, yellow and green lights with a simple plug-in system.</p>';product.parentElement.append(copy); }
           const setup=q('.setup-shell');
           const copyNow=q('.local-product-copy'); if (setup && copyNow) copyNow.style.display='none';
           if (setup && !q('.local-racing-page')) { setup.style.display='none'; const page=document.createElement('section');page.className='local-racing-page';page.innerHTML='<div class="local-racing-header"><h1>Letâ€™s Go Racing</h1><button class="local-connect" type="button">CONNECT TO HARDWARE</button></div><div class="local-race-card"><h2>Select race type</h2><select class="local-type-select"></select><div class="local-type-form"></div></div>'; const sel=q('.local-type-select',page);raceTypes.forEach(t=>{const o=document.createElement('option');o.textContent=t;sel.append(o)});const host=q('.local-type-form',page);sel.onchange=()=>renderRaceForm(sel.value,host);renderRaceForm(sel.value,host);setup.parentElement.insertBefore(page,setup); }
@@ -311,7 +311,7 @@
         const syncAuth=()=>{const s=session(),simulator=document.body.dataset.simulatorMode==='true',access=s||simulator,profiles=navButton('Racer Profiles'),racing=navButton("Let's Go Racing"),login=navButton('Log In')||navButton('Log Out');if(profiles)profiles.style.display=access?'':'none';if(racing)racing.style.display=access?'':'none';if(login)login.textContent=s?'Log Out':'Log In'};
         document.addEventListener('click',e=>{const b=e.target.closest('.topbar nav button');if(!b)return;const label=b.textContent.trim(),simulator=document.body.dataset.simulatorMode==='true';if(label==='Log In'){e.preventDefault();e.stopImmediatePropagation();showLogin()}if(label==='Log Out'){e.preventDefault();e.stopImmediatePropagation();localStorage.removeItem(authKey);syncAuth();showHome()}if((label==='Racer Profiles'||label==="Let's Go Racing")&&!session()&&!simulator){e.preventDefault();e.stopImmediatePropagation();showLogin();return}if(label==='Racer Profiles')window.setTimeout(()=>{qa('.local-racing-page').forEach(x=>x.style.display='none');active('Racer Profiles')},0);if(label==="Let's Go Racing")window.setTimeout(()=>{const h=q('.local-page-host');if(h)h.style.display='none';active("Let's Go Racing")},0);if(label==='Home')window.setTimeout(showHome,0)},true);
         document.addEventListener('change',e=>{if(!e.target.matches('.local-racer-checks input[type=checkbox]'))return;const count=qa('.local-racer-checks input:checked').length;qa('.local-editor-fields label').forEach(l=>{if(/number of racers/i.test(l.innerText)){const i=q('input',l);if(i){i.value=Math.max(1,count);i.readOnly=true}}})});
-        const enhance=()=>{const slogan=q('.local-product-copy h2');if(slogan)slogan.remove();qa('#profile-list button[data-delete-profile]').forEach(b=>{b.dataset.confirmDelete=b.dataset.deleteProfile;delete b.dataset.deleteProfile;b.textContent='Delete'});syncAuth()};
+        const enhance=()=>{qa('#profile-list button[data-delete-profile]').forEach(b=>{b.dataset.confirmDelete=b.dataset.deleteProfile;delete b.dataset.deleteProfile;b.textContent='Delete'});syncAuth()};
         document.addEventListener('click',e=>{const b=e.target.closest('[data-confirm-delete]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const index=Number(b.dataset.confirmDelete),overlay=document.createElement('div');overlay.className='local-confirm-bubble';overlay.innerHTML='<div class="local-confirm-card"><p>Are you sure you would like to delete race?</p><div><button data-answer="yes">Yes</button><button data-answer="no">No</button></div></div>';overlay.onclick=event=>{const answer=event.target.dataset.answer;if(answer==='no')overlay.remove();if(answer==='yes'){let riders=[];try{riders=JSON.parse(localStorage.getItem(profilesKey)||'[]')}catch{}riders.splice(index,1);localStorage.setItem(profilesKey,JSON.stringify(riders));overlay.remove();const list=q('#profile-list');if(list)list.innerHTML='';}};document.body.append(overlay)},true);
         setInterval(enhance,300);enhance();
       })();
