@@ -53,7 +53,7 @@ main { width: min(1480px,100%); padding: 34px; margin: 0 auto; flex: 1; }
 .jake-home-story figcaption { margin: 7px 0 0; text-align: center; text-transform: uppercase; font: 900 clamp(2rem,5vw,4.8rem)/.88 var(--font-display); letter-spacing: .015em; background-clip: text !important; -webkit-background-clip: text !important; color: transparent; -webkit-text-fill-color: transparent; }
 .jake-home-story figure:nth-of-type(1) figcaption { background: linear-gradient(92deg,#0759c7,#2ed9ff 50%,#b8f3ff); }
 .jake-home-story figure:nth-of-type(2) figcaption { background: linear-gradient(92deg,#ff6b00,#ffb000 50%,#ffd166); }
-.jake-home-story figure:nth-of-type(3) figcaption { background: linear-gradient(92deg,#168f3a,#73e000 50%,#d0ff4f); }
+.jake-home-story figure:nth-of-type(3) figcaption { background: linear-gradient(92deg,#6420aa,#b43cff 50%,#f06cff); }
 .jake-home-story figure:nth-of-type(4) figcaption { background: linear-gradient(92deg,#6420aa,#b43cff 50%,#f06cff); }
 .jake-home-shop { width: max-content; margin: 10px auto 0; padding: 12px 22px; }
 .product-list { display: grid; grid-template-columns: repeat(3,1fr); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
