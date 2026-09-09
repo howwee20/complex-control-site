@@ -29,12 +29,6 @@ const stories = [
 export function ProductShowcase({ onOpenSoftware, onOpenShop }: ProductShowcaseProps) {
   return (
     <section className="product-shell jake-home">
-      <h1 className="jake-home-headline">
-        <span>Complex Control</span>
-        <span>Multi-platform Transponder Racing</span>
-        <span>At a Competitive Price</span>
-      </h1>
-
       <p className="jake-home-intro">
         <strong>
           Complex Control is a user-friendly transponder timing and race management system built for racers and track operators.
