@@ -81,7 +81,9 @@
   };
 
   const openReceiverFromTap = () => {
-    return window.open(`${RECEIVER_URL}?connect=${Date.now()}`, "complex-control-field-receiver");
+    // Open synchronously in the tap gesture; deliver() navigates this window
+    // to the offline HTTP receiver after loading the cached capsule.
+    return window.open("about:blank", "complex-control-field-receiver");
   };
 
   const deliver = (cached, receiver) => new Promise((resolve, reject) => {
