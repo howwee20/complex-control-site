@@ -159,12 +159,43 @@ export function connectRace(
   let closed = false;
   let socket: WebSocket | undefined;
   let retry: number | undefined;
+  let revision = 0;
+  let refreshing = false;
+  let refreshController: AbortController | undefined;
+
+  // A phone can miss the final websocket message while asleep or off Wi-Fi.
+  // Reconcile with persisted state even when a socket appears to remain open.
+  const refresh = async () => {
+    if (closed || refreshing || document.visibilityState === "hidden") return;
+    refreshing = true;
+    const requestedRevision = revision;
+    const controller = new AbortController();
+    refreshController = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      const race = await request<RaceSnapshot>(`/api/races/${raceId}`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      if (!closed && requestedRevision === revision) onMessage({ type: "race.updated", race });
+    } catch {
+      // Keep saved standings visible; the next poll or reconnect retries.
+    } finally {
+      window.clearTimeout(timeout);
+      refreshing = false;
+      if (refreshController === controller) refreshController = undefined;
+    }
+  };
+  const refreshVisible = () => { void refresh(); };
 
   const open = () => {
     if (closed) return;
     socket = new WebSocket(`${protocol}//${host}/api/ws/races/${raceId}`);
-    socket.onopen = () => onStatus(true);
-    socket.onmessage = (event) => onMessage(JSON.parse(event.data) as LiveMessage);
+    socket.onopen = () => { onStatus(true); void refresh(); };
+    socket.onmessage = (event) => {
+      revision += 1;
+      onMessage(JSON.parse(event.data) as LiveMessage);
+    };
     socket.onerror = () => socket?.close();
     socket.onclose = () => {
       onStatus(false);
@@ -172,10 +203,19 @@ export function connectRace(
     };
   };
   open();
+  const poll = window.setInterval(refreshVisible, 5000);
+  window.addEventListener("online", refreshVisible);
+  window.addEventListener("focus", refreshVisible);
+  document.addEventListener("visibilitychange", refreshVisible);
 
   return () => {
     closed = true;
     if (retry) window.clearTimeout(retry);
+    window.clearInterval(poll);
+    refreshController?.abort();
+    window.removeEventListener("online", refreshVisible);
+    window.removeEventListener("focus", refreshVisible);
+    document.removeEventListener("visibilitychange", refreshVisible);
     socket?.close();
   };
 }

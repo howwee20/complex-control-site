@@ -30,7 +30,7 @@ const flags: Array<{ state: ControlState; label: string }> = [
   { state: "RED", label: "Red" },
   { state: "YELLOW", label: "Yellow" },
   { state: "GREEN", label: "Green" },
-  { state: "CHECKERED", label: "Checkered" },
+  { state: "CHECKERED", label: "Finish race" },
 ];
 
 function simulationTimestamp(race: RaceSnapshot, entrantIndex: number, lapsCompleted: number): string {
@@ -167,8 +167,8 @@ export function RaceControl({
 
       <section className="leaderboard-card">
         <div className="section-heading compact">
-          <div><p className="eyebrow">Official order</p><h3>Leaderboard</h3></div>
-          <span className="quiet-label">Updated live</span>
+          <div><p className="eyebrow">Official order</p><h3>{race.status === "FINISHED" ? "Final results" : "Leaderboard"}</h3></div>
+          <span className="quiet-label">{race.status === "FINISHED" ? "Saved" : "Updated live"}</span>
         </div>
         <div className="table-scroll">
           <table className="leaderboard">
@@ -182,7 +182,7 @@ export function RaceControl({
                   <td><strong>{entrant.laps_completed}</strong><small> / {race.target_laps}</small>{entrant.adjustment_total !== 0 && <em className="adjustment-mark">adjusted</em>}</td>
                   <td className="time-cell">{formatDuration(entrant.last_lap_ms)}</td>
                   <td className="time-cell best">{formatDuration(entrant.best_lap_ms)}</td>
-                  <td><span className={`driver-status ${entrant.finished_at || entrant.eliminated_at_lap ? "finished" : "racing"}`}>{entrant.eliminated_at_lap ? `Eliminated at lap ${entrant.eliminated_at_lap}` : entrant.finished_at ? "Finished" : race.control_state === "GREEN" ? "Racing" : "Held"}</span>{entrant.reaction_time_ms !== null && <small>Reaction {formatDuration(entrant.reaction_time_ms)}</small>}</td>
+                  <td><span className={`driver-status ${entrant.finished_at || entrant.eliminated_at_lap ? "finished" : "racing"}`}>{entrant.eliminated_at_lap ? `Eliminated at lap ${entrant.eliminated_at_lap}` : entrant.finished_at ? "Finished" : race.status === "FINISHED" ? "Did not finish" : race.control_state === "GREEN" ? "Racing" : "Held"}</span>{entrant.reaction_time_ms !== null && <small>Reaction {formatDuration(entrant.reaction_time_ms)}</small>}</td>
                   <td><button className="table-action" onClick={() => openCorrection(entrant)}>Edit lap</button></td>
                 </tr>
               ))}
