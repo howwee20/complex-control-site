@@ -123,7 +123,7 @@ export function RaceControl({
           <p className="eyebrow">{race.stage.replaceAll("_", " ")}</p>
           <h2>{race.name}</h2>
           <div className="race-actions">
-            {race.status === "READY" && <button className="start-button" onClick={() => void onStart()} disabled={busy}>Stage race</button>}
+            {(race.status === "READY" || (race.status === "RUNNING" && race.started_at === null && race.control_state !== "GREEN")) && <button className="start-button" onClick={() => void onStart()} disabled={busy}>{busy ? "Starting…" : "Start race"}</button>}
             {race.status === "READY" && race.entrants.length > 1 && <button className="secondary-button" onClick={() => void onRandomize()} disabled={busy}>Randomize grid</button>}
             {(race.status === "FINISHED" || race.status === "INTERRUPTED") && <a className="primary-button link-button" href={exportUrl}>Export CSV</a>}
             {!race.superseded && ["RUNNING", "FINISHED", "INTERRUPTED"].includes(race.status) && <button className="secondary-button restart-button" type="button" onClick={() => setRestartOpen(true)} disabled={busy}>Restart race</button>}
@@ -139,7 +139,7 @@ export function RaceControl({
 
       {barrel && <section className="mode-instructions">
         <div><p className="eyebrow">Barrel timer</p><h3>{randomBarrelStart ? "Random-green start" : "Rider-triggered start"}</h3></div>
-        <p>{randomBarrelStart ? "Stage the run, then arm the random green. The first tag pass after green records reaction time and starts the run; the second pass stops it." : "Set the run GREEN. The rider’s first tag pass starts the timer and the second pass stops it."}</p>
+        <p>{randomBarrelStart ? "Start race automatically arms the random green. The first tag pass after green records reaction time and starts the run; the second pass stops it." : "Start race to enable timing. The rider’s first tag pass starts the timer and the second pass stops it."}</p>
         {randomGreenStatus && <strong>{randomGreenStatus}</strong>}
       </section>}
 

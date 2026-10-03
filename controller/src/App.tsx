@@ -9,6 +9,7 @@ import { RacerProfiles } from "./components/RacerProfiles";
 import { ShopShowcase } from "./components/ShopShowcase";
 import { SystemUpdates } from "./components/SystemUpdates";
 import { formatDate } from "./format";
+import { startSelectedRace } from "./startRace";
 import type {
   ControlState,
   EventCreate,
@@ -358,7 +359,15 @@ export default function App() {
             race={race}
             events={observations}
             busy={busy}
-            onStart={() => guarded(async () => setRace(await api.startRace(race.id)))}
+            onStart={() => guarded(async () => {
+              try {
+                setRace(await startSelectedRace(race.id, api));
+              } catch (error) {
+                // Keep a partially started race visible and allow Start to retry.
+                await api.getRace(race.id).then(setRace).catch(() => undefined);
+                throw error;
+              }
+            })}
             onRandomize={() => guarded(async () => setRace(await api.randomizeRace(race.id)))}
             onRestart={() => guarded(async () => {
               const restarted = await api.restartRace(race.id);
