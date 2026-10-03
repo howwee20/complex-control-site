@@ -1,5 +1,5 @@
 (() => {
-  const controllerUrl = "/field-update.html?updater=6";
+  const controllerUrl = "/field-update.html?updater=7";
 
   const isHardwareControl = (element) => {
     if (!element) return false;

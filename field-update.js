@@ -4,7 +4,7 @@
   const DB_NAME = "complex-control-field-updates";
   const STORE = "capsules";
   const KEY = "latest";
-  const UPDATER_VERSION = "6";
+  const UPDATER_VERSION = "7";
   const UPDATER_VERSION_KEY = "complex-control-field-updater-version";
   const CONTROLLER_ORIGIN = "http://10.42.0.1:8000";
   const RECEIVER_URL = `${CONTROLLER_ORIGIN}/field-update-receiver.html`;
@@ -168,7 +168,7 @@
   };
 
   updateButton.addEventListener("click", () => void updatePi());
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js?updater=6").catch(() => undefined);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js?updater=7").catch(() => undefined);
   updateButton.disabled = true;
   void clearOldCache()
     .then(() => downloadLatest())
