@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { EventView, RacerProfile } from "../types";
+import { RosterBackup } from "./RosterBackup";
 
 type ProfileInput = Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">;
 
@@ -10,12 +11,14 @@ interface Props {
   onCreate: (profile: ProfileInput) => Promise<void>;
   onUpdate: (profileId: string, profile: ProfileInput) => Promise<void>;
   onDelete: (profileId: string) => Promise<void>;
+  onRestored: () => Promise<void>;
+  onError: (message: string | null) => void;
   hardwareAvailable: boolean;
 }
 
 const emptyProfile = (): ProfileInput => ({ driver_name: "", kart_number: "", tag_id: "" });
 
-export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate, onDelete, hardwareAvailable }: Props) {
+export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate, onDelete, onRestored, onError, hardwareAvailable }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ProfileInput>(emptyProfile);
   const [scanAfter, setScanAfter] = useState<string | null | undefined>(undefined);
@@ -126,6 +129,8 @@ export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate,
           </article>
         ))}
       </div>
+
+      <RosterBackup hardwareAvailable={hardwareAvailable} profiles={profiles} onRestored={onRestored} onError={onError} />
     </section>
   );
 }

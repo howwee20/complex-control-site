@@ -490,3 +490,22 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
   .profile-list article { grid-template-columns: 54px 1fr; }
   .profile-list article button { width: 100%; }
 }
+
+.roster-backup { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 24px; margin-top: 28px; padding: 22px 24px; border: 1px solid #4a2b31; border-left: 4px solid #d82032; border-radius: 10px; background: #111011; }
+.roster-backup p:not(.eyebrow) { max-width: 620px; margin: 6px 0 0; color: #bcb3b6; font-size: .86rem; line-height: 1.5; }
+.roster-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.file-button { position: relative; overflow: hidden; }
+.file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.roster-result { color: #f3ecee !important; font-weight: 700; }
+.roster-plan { width: min(620px, 100%); max-height: calc(100vh - 48px); overflow: auto; }
+.roster-conflicts { display: grid; gap: 12px; margin: 16px 0; padding: 0; list-style: none; }
+.roster-conflicts li { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.roster-conflicts small { color: var(--muted); line-height: 1.45; }
+.conflict-choice { display: grid; gap: 6px; }
+.conflict-choice label { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+.recovery-setup { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.recovery-setup p:not(.eyebrow) { color: var(--muted); font-size: .82rem; line-height: 1.5; }
+.recovery-code { font-family: var(--font-display); letter-spacing: .08em; overflow-wrap: anywhere; }
+.access-footnote { color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.access-footnote code { font-size: .78rem; }
+@media (max-width: 760px) { .roster-backup { padding: 18px; } .roster-actions { width: 100%; } .roster-actions > * { flex: 1 1 100%; text-align: center; } }
