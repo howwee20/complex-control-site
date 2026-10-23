@@ -4,28 +4,46 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0c1117" />
-    <title>Install Complex Control Update</title>
+    <title>Opening Race Control</title>
     <style>
       :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #090909; color: #f8f5f6; }
       * { box-sizing: border-box; }
       body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; }
       main { width: min(620px, 100%); padding: 30px; border: 1px solid #56333a; border-left: 5px solid #d82032; border-radius: 18px; background: #111011; box-shadow: 0 24px 80px #0009; }
       .status { color: #fff; font-weight: 700; text-align: center; }
+      .controller-link { display: block; margin-top: 24px; color: #ff8993; text-align: center; }
     </style>
   </head>
   <body>
     <main>
-      <div class="status" id="status">Waiting for the prepared update from mycomplexcontrol.com…</div>
+      <div class="status" id="status">Opening Race Control…</div>
+      <a class="controller-link" id="controller-link" href="/?view=setup">Open Race Control</a>
     </main>
     <script>
       (() => {
         "use strict";
+        // Protocol 2: this controller saves a signed update and installs it only
+        // while no race is running, so the website may hand one over while
+        // opening Race Control. Racing never waits for an update.
         const SOURCE_ORIGIN = "https://mycomplexcontrol.com";
+        const PROTOCOL = 2;
         const status = document.querySelector("#status");
-        let prepared = null;
-        let installStarted = false;
+        const link = document.querySelector("#controller-link");
+        const requested = new URLSearchParams(window.location.search).get("then") || "";
+        const destination = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/?view=setup";
+        let versions = { installed: null, staged: null };
+        let handled = false;
+        let leaveTimer = null;
 
+        if (link) link.setAttribute("href", destination);
         const setStatus = (message) => { status.textContent = message; };
+        const tellOpener = (message) => {
+          try { window.opener?.postMessage(message, SOURCE_ORIGIN); } catch { /* opener closed */ }
+        };
+        const openController = (delay = 0) => {
+          if (leaveTimer !== null) window.clearTimeout(leaveTimer);
+          leaveTimer = window.setTimeout(() => window.location.replace(destination), delay);
+        };
         const signatureHeader = (buffer) => {
           const bytes = new Uint8Array(buffer);
           let binary = "";
@@ -34,90 +52,90 @@
           }
           return btoa(binary);
         };
-
-        const installLatest = async () => {
-          // This route accepts only a release signed by the controller owner's key.
-          // Normal race controls remain protected by the operator PIN.
-          if (prepared) {
-            try {
-              const response = await fetch("/api/system/frontend-update", { cache: "no-store" });
-              const current = response.ok ? await response.json() : null;
-              if (current?.current?.version === prepared.version) {
-                setStatus(`Last update: ${prepared.version} · Successful`);
-                window.opener?.postMessage({ type: "complex-control-field-update-complete", version: prepared.version }, SOURCE_ORIGIN);
-              } else {
-                setStatus(`${prepared.version} is verified and will install automatically.`);
-                void installPrepared();
-              }
-            } catch {
-              setStatus(`${prepared.version} is verified and will install automatically.`);
-              void installPrepared();
-            }
+        const readVersions = async () => {
+          try {
+            const response = await fetch("/api/system/frontend-update", { cache: "no-store" });
+            if (!response.ok) return versions;
+            const current = await response.json();
+            versions = { installed: current?.current?.version ?? null, staged: current?.staged?.version ?? null };
+          } catch {
+            // Unknown versions only mean an update might be offered again.
           }
+          return versions;
         };
 
-        const installPrepared = async () => {
-          if (!prepared || installStarted) return;
-          installStarted = true;
-          setStatus(`Installing ${prepared.version}…`);
-          const response = await fetch("/api/system/frontend-update", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/gzip",
-              "X-Frontend-Filename": prepared.filename,
-              "X-Frontend-Signature": signatureHeader(prepared.signature),
-              "X-Frontend-SHA256": prepared.sha256,
-              "X-Frontend-Version": prepared.version,
-            },
-            body: prepared.capsule,
-          });
-          if (!response.ok) {
-            const body = await response.json().catch(() => ({}));
-            setStatus(body.detail || `The Pi rejected the update (${response.status}).`);
-            installStarted = false;
+        const receive = async (prepared) => {
+          if (prepared.version && (prepared.version === versions.installed || prepared.version === versions.staged)) {
+            tellOpener({ type: "complex-control-field-update-complete", version: prepared.version, state: "current" });
+            openController();
             return;
           }
-          setStatus("Verified. The Pi is installing and health-checking the new interface…");
-          const deadline = Date.now() + 120000;
-          while (Date.now() < deadline) {
-            await new Promise((resolve) => setTimeout(resolve, 1800));
-            try {
-              const check = await fetch("/api/system/frontend-update", { cache: "no-store" });
-              if (!check.ok) continue;
-              const update = await check.json();
-              if (update.state === "failed") {
-                setStatus(update.message || "The update failed and the previous interface was restored.");
-                installStarted = false;
-                return;
-              }
-              if (update.state === "complete" && update.current?.version === prepared.version) {
-                setStatus("Installed and healthy. Opening controller…");
-                window.opener?.postMessage({ type: "complex-control-field-update-complete", version: prepared.version }, SOURCE_ORIGIN);
-                window.setTimeout(() => window.location.replace("/"), 900);
-                return;
-              }
-            } catch {
-              // A short disconnect is expected while the Pi restarts the web service.
-            }
+          setStatus(`Saving controller update ${prepared.version} on this controller…`);
+          let body = {};
+          let ok = false;
+          const abort = typeof AbortController === "function" ? new AbortController() : null;
+          const abortTimer = abort ? window.setTimeout(() => abort.abort(), 60000) : null;
+          try {
+            const response = await fetch("/api/system/frontend-update", {
+              signal: abort?.signal,
+              method: "POST",
+              headers: {
+                "Content-Type": "application/gzip",
+                "X-Frontend-Filename": prepared.filename,
+                "X-Frontend-Signature": signatureHeader(prepared.signature),
+                "X-Frontend-SHA256": prepared.sha256,
+                "X-Frontend-Version": prepared.version,
+              },
+              body: prepared.capsule,
+            });
+            ok = response.ok;
+            body = await response.json().catch(() => ({}));
+          } catch {
+            body = { detail: "The update could not be saved on the controller." };
+          } finally {
+            if (abortTimer !== null) window.clearTimeout(abortTimer);
           }
-          setStatus("The Pi is taking longer than expected. Open the controller to check its status.");
-          installStarted = false;
+          if (!ok) {
+            const detail = typeof body.detail === "string" ? body.detail : "The controller kept its current version.";
+            tellOpener({ type: "complex-control-field-update-error", version: prepared.version, detail });
+            setStatus(`${detail} Racing is not affected.`);
+            openController(2500);
+            return;
+          }
+          if (body.state === "complete" && body.current?.version === prepared.version) {
+            tellOpener({ type: "complex-control-field-update-complete", version: prepared.version, state: "complete" });
+            setStatus(`Controller ${prepared.version} is installed. Opening Race Control…`);
+          } else {
+            // Saved durably; it installs automatically when no race is running.
+            tellOpener({ type: "complex-control-field-update-staged", version: prepared.version, state: "staged" });
+            tellOpener({ type: "complex-control-field-update-complete", version: prepared.version, state: "staged" });
+            setStatus(`Update ${prepared.version} is saved and installs after racing. Opening Race Control…`);
+          }
+          openController(700);
         };
 
         window.addEventListener("message", (event) => {
-          if (event.origin !== SOURCE_ORIGIN || event.source !== window.opener) return;
+          if (event.origin !== SOURCE_ORIGIN || event.source !== window.opener || handled) return;
+          if (event.data?.type === "complex-control-field-no-update") {
+            handled = true;
+            openController();
+            return;
+          }
           if (event.data?.type !== "complex-control-field-capsule") return;
           if (!(event.data.capsule instanceof ArrayBuffer) || !(event.data.signature instanceof ArrayBuffer)) return;
-          prepared = event.data;
-          setStatus(`Received ${prepared.version}.`);
-          void installLatest();
+          handled = true;
+          void receive(event.data);
         });
 
-        if (window.opener) {
-          window.opener.postMessage({ type: "complex-control-field-receiver-ready" }, SOURCE_ORIGIN);
-        } else {
-          setStatus("Open this page from mycomplexcontrol.com after preparing the latest update.");
+        if (!window.opener) {
+          openController();
+          return;
         }
+        void readVersions().then(({ installed, staged }) => {
+          tellOpener({ type: "complex-control-field-receiver-ready", protocol: PROTOCOL, installed, staged });
+        });
+        // Never hold the operator here if the website tab stopped responding.
+        leaveTimer = window.setTimeout(() => { if (!handled) window.location.replace(destination); }, 8000);
       })();
     </script>
   </body>

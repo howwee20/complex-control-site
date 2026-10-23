@@ -1,7 +1,7 @@
-const CACHE = "complex-control-field-update-v7";
+const CACHE = "complex-control-field-update-v8";
 const SHELL = [
-  "/field-update.html?updater=7",
-  "/field-update.js?updater=7",
+  "/field-update.html?updater=8",
+  "/field-update.js?updater=8",
   "/field-update.webmanifest",
 ];
 
@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
         const cached = await caches.match(event.request, { ignoreSearch: true });
         if (cached) return cached;
         if (event.request.mode === "navigate") {
-          return caches.match("/field-update.html?updater=7", { ignoreSearch: true });
+          return caches.match("/field-update.html?updater=8", { ignoreSearch: true });
         }
         return Response.error();
       }),

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api, connectRace, connectReader } from "./api";
 import { EventControl } from "./components/EventControl";
+import { ControllerConnection, type ControllerDestination } from "./components/ControllerConnection";
 import { OperatorLogin, OperatorPinChange } from "./components/OperatorAccess";
 import { PublicDisplay } from "./components/PublicDisplay";
 import { RaceControl } from "./components/RaceControl";
@@ -21,8 +22,8 @@ import type {
   RacerProfile,
 } from "./types";
 
-type Screen = "product" | "shop" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display";
-type AccessState = "checking" | "open" | "locked";
+type Screen = "product" | "shop" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display" | "connect";
+type AccessState = "checking" | "open" | "locked" | "unavailable";
 
 const publicPreview = import.meta.env.VITE_PUBLIC_PREVIEW === "true";
 const previewProfilesKey = "complex-control-racer-profiles";
@@ -85,8 +86,12 @@ function projectedRaceCount(payload: EventCreate): number {
 export default function App() {
   const [screen, setScreen] = useState<Screen>(() => {
     const requestedView = new URLSearchParams(window.location.search).get("view");
-    return requestedView === "setup" ? "setup" : "product";
+    if (requestedView === "profiles") return "profiles";
+    if (publicPreview && requestedView === "connect") return "connect";
+    return requestedView === "setup" || !publicPreview ? "setup" : "product";
   });
+  const [connectionDestination, setConnectionDestination] = useState<ControllerDestination>("setup");
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [savedEvents, setSavedEvents] = useState<EventSummary[]>(() => publicPreview ? previewEvents() : []);
   const [profiles, setProfiles] = useState<RacerProfile[]>(() => publicPreview ? previewProfiles() : []);
   const [event, setEvent] = useState<EventSnapshot | null>(null);
@@ -111,18 +116,27 @@ export default function App() {
 
   useEffect(() => {
     if (publicPreview) return;
+    let cancelled = false;
+    setAccess("checking");
+    setError(null);
     void api.authSession()
       .then(async (session) => {
+        if (cancelled) return;
         setAuthEnabled(session.enabled);
         if (!session.enabled || session.authenticated) {
-          setAccess("open");
           await loadOperatorData();
+          if (!cancelled) setAccess("open");
         } else {
           setAccess("locked");
         }
       })
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : "Startup failed"));
-  }, [loadOperatorData]);
+      .catch((caught: unknown) => {
+        if (cancelled) return;
+        setAccess("unavailable");
+        setError(caught instanceof Error ? caught.message : "Controller connection failed");
+      });
+    return () => { cancelled = true; };
+  }, [loadOperatorData, connectionAttempt]);
 
   useEffect(() => {
     if (publicPreview || access !== "open") return;
@@ -294,6 +308,11 @@ export default function App() {
     navigate("setup");
   };
 
+  const connectController = (destination: ControllerDestination = "setup") => {
+    setConnectionDestination(destination);
+    navigate("connect");
+  };
+
   if (screen === "display" && race) {
     return <div className="display-shell"><button className="display-exit" onClick={() => setScreen("race")}>Exit display</button><PublicDisplay race={race} /></div>;
   }
@@ -312,11 +331,12 @@ export default function App() {
         >
           <img src="/complex-control-logo.png" alt="Complex Control — Timing, Control, Results" />
         </a>
-        <nav>
+        <nav data-controller-navigation="true">
           {publicPreview && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
           {publicPreview && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
           {publicPreview && <button className={screen === "setup" ? "active" : ""} onClick={openController}>Let's Go Racing</button>}
           {publicPreview && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop Now</button>}
+          {publicPreview && <button className={screen === "connect" ? "active" : ""} onClick={() => connectController()}>Race Control</button>}
           {!publicPreview && access === "open" && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
           {!publicPreview && access === "open" && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
           {!publicPreview && access === "open" && <button className={screen === "setup" || screen === "history" ? "active" : ""} onClick={() => navigate("setup")}>Let's Go Racing</button>}
@@ -334,11 +354,31 @@ export default function App() {
 
         {!publicPreview && access === "checking" && <div className="product-loading" role="status">Checking operator access…</div>}
 
+        {!publicPreview && access === "unavailable" && (
+          <section className="connection-help" role="status">
+            <h1>Reconnect to your controller</h1>
+            <p>Check that your controller is powered on and this device is still on its Wi-Fi or local network. Your saved racers and results live on the controller.</p>
+            <button className="primary-button" onClick={() => setConnectionAttempt((attempt) => attempt + 1)}>Try connection again</button>
+          </section>
+        )}
+
         {!publicPreview && access === "locked" && <OperatorLogin busy={busy} onLogin={(pin) => void guarded(async () => {
           await api.login(pin);
-          setAccess("open");
           await loadOperatorData();
+          setAccess("open");
         })} />}
+
+        {publicPreview && screen === "connect" && <ControllerConnection destination={connectionDestination} onHome={() => navigate("product")} />}
+
+        {publicPreview && (screen === "profiles" || screen === "setup") && (
+          <aside className="preview-storage-notice" aria-label="Website preview storage">
+            <div>
+              <strong>Website preview · Saved in this browser</strong>
+              <p>Your track’s racers and results are on its controller. This preview does not display or sync that roster.</p>
+            </div>
+            <button className="secondary-button" onClick={() => connectController(screen === "profiles" ? "profiles" : "setup")}>{screen === "profiles" ? "Open my track profiles" : "Open my track controller"}</button>
+          </aside>
+        )}
 
         {access === "open" && screen === "product" && (
           <Suspense fallback={<div className="product-loading" role="status">Loading…</div>}>

@@ -75,17 +75,17 @@ export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate,
     <section className="profiles-shell">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">RFID roster</p>
+          <p className="eyebrow">{hardwareAvailable ? "Saved on this controller" : "Preview roster · This browser"}</p>
           <h2>Racer Profiles</h2>
           <p className="section-copy">Register each racer once, then select them when you build a race.</p>
         </div>
-        <span className="quiet-label">{profiles.length} registered</span>
+        <span className="quiet-label">{profiles.length} {hardwareAvailable ? "registered" : "preview racers"}</span>
       </div>
 
       <form className="profile-editor" onSubmit={submit}>
         <div className="profile-editor-heading">
           <h3>{editingId ? "Edit Racer" : "Add Racer"}</h3>
-          <span>{scanAfter !== undefined ? "Waiting for a physical tag…" : readerEvent ? `Reader ready · last tag ${readerEvent.tag_id}` : "Reader waiting"}</span>
+          <span>{!hardwareAvailable ? "Connect to your controller to scan tags" : scanAfter !== undefined ? "Waiting for a physical tag…" : readerEvent ? `Last recorded tag · ${readerEvent.tag_id}` : "No tag recorded yet"}</span>
         </div>
         <label><span>Racer name</span><input value={draft.driver_name} onChange={(event) => setDraft({ ...draft, driver_name: event.target.value })} placeholder="Racer name" required /></label>
         <label><span>Racer number</span><input value={draft.kart_number} onChange={(event) => setDraft({ ...draft, kart_number: event.target.value })} placeholder="#" required /></label>
@@ -93,7 +93,7 @@ export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate,
           <span>RFID tag</span>
           <div className="tag-input">
             <input value={draft.tag_id} onChange={(event) => setDraft({ ...draft, tag_id: event.target.value })} placeholder="Scan or enter tag" required />
-            <button type="button" className={scanAfter !== undefined ? "scanning" : ""} onClick={() => setScanAfter(readerEvent?.id ?? null)}>{scanAfter !== undefined ? "Waiting…" : "Scan tag"}</button>
+            <button type="button" disabled={!hardwareAvailable || busy} className={scanAfter !== undefined ? "scanning" : ""} onClick={() => setScanAfter(readerEvent?.id ?? null)}>{!hardwareAvailable ? "Scan at track" : scanAfter !== undefined ? "Waiting…" : "Scan tag"}</button>
           </div>
         </label>
         <div className="profile-form-actions">
@@ -103,7 +103,7 @@ export function RacerProfiles({ busy, profiles, readerEvent, onCreate, onUpdate,
       </form>
 
       <div className="profile-list">
-        {profiles.length === 0 && <p className="empty-state">No racers yet. Scan the first tag above.</p>}
+        {profiles.length === 0 && <p className="empty-state">{hardwareAvailable ? "No racers saved on this controller yet. Scan the first tag above." : "No preview racers saved in this browser. Open your track profiles above to see the roster on your controller."}</p>}
         {profiles.map((profile) => (
           <article key={profile.id}>
             <span className="profile-number">#{profile.kart_number}</span>
