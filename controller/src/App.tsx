@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api, connectRace, connectReader } from "./api";
 import { EventControl } from "./components/EventControl";
 import { ControllerConnection, type ControllerDestination } from "./components/ControllerConnection";
-import { OperatorLogin, OperatorPinChange } from "./components/OperatorAccess";
+import { OperatorLogin, OperatorPinChange, RecoveryCodeDialog } from "./components/OperatorAccess";
 import { PublicDisplay } from "./components/PublicDisplay";
 import { RaceControl } from "./components/RaceControl";
 import { RaceSetup } from "./components/RaceSetup";
@@ -17,6 +17,7 @@ import type {
   EventSnapshot,
   EventSummary,
   EventView,
+  OperatorSessionView,
   RaceFormat,
   RaceSnapshot,
   RacerProfile,
@@ -104,6 +105,16 @@ export default function App() {
   const [access, setAccess] = useState<AccessState>(publicPreview ? "open" : "checking");
   const [authEnabled, setAuthEnabled] = useState(false);
   const [pinDialog, setPinDialog] = useState(false);
+  const [pinIsDefault, setPinIsDefault] = useState(false);
+  const [recoveryConfigured, setRecoveryConfigured] = useState(true);
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+
+  const applySession = (session: OperatorSessionView) => {
+    setAuthEnabled(session.enabled);
+    // Older controllers do not report these; never nag in that case.
+    setPinIsDefault(session.pin_is_default === true);
+    setRecoveryConfigured(session.recovery_configured !== false);
+  };
 
   const refreshEvents = useCallback(async () => setSavedEvents(await api.listEvents()), []);
   const loadOperatorData = useCallback(async () => {
@@ -122,7 +133,7 @@ export default function App() {
     void api.authSession()
       .then(async (session) => {
         if (cancelled) return;
-        setAuthEnabled(session.enabled);
+        applySession(session);
         if (!session.enabled || session.authenticated) {
           await loadOperatorData();
           if (!cancelled) setAccess("open");
@@ -363,10 +374,28 @@ export default function App() {
         )}
 
         {!publicPreview && access === "locked" && <OperatorLogin busy={busy} onLogin={(pin) => void guarded(async () => {
-          await api.login(pin);
+          applySession(await api.login(pin));
+          await loadOperatorData();
+          setAccess("open");
+        })} onRecover={(code, pin) => void guarded(async () => {
+          const recovered = await api.recoverPin(code, pin);
+          applySession(recovered);
+          setRecoveryCode(recovered.recovery_code);
           await loadOperatorData();
           setAccess("open");
         })} />}
+
+        {!publicPreview && access === "open" && authEnabled && (pinIsDefault || !recoveryConfigured) && (
+          <aside className="preview-storage-notice" aria-label="Controller access">
+            <div>
+              <strong>{pinIsDefault ? "This controller still uses the initial PIN" : "No owner recovery code yet"}</strong>
+              <p>{pinIsDefault
+                ? "Anyone who knows the published PIN can run races here. Choose your own four-digit PIN."
+                : "Create a recovery code so a forgotten PIN can be reset at the track without internet."}</p>
+            </div>
+            <button className="secondary-button" onClick={() => setPinDialog(true)}>{pinIsDefault ? "Change PIN" : "Create recovery code"}</button>
+          </aside>
+        )}
 
         {publicPreview && screen === "connect" && <ControllerConnection destination={connectionDestination} onHome={() => navigate("product")} />}
 
@@ -390,7 +419,7 @@ export default function App() {
 
         {access === "open" && screen === "setup" && <RaceSetup busy={busy} readerEvent={readerEvent} profiles={profiles} savedEvents={savedEvents} onCreate={createEvent} onOpen={openEvent} onDuplicate={duplicateEvent} onDelete={deleteEvent} onDeleteAll={deleteAllEvents} />}
 
-        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} hardwareAvailable={!publicPreview} />}
+        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} onRestored={refreshProfiles} onError={setError} hardwareAvailable={!publicPreview} />}
 
         {access === "open" && screen === "event" && event && <EventControl event={event} busy={busy} readerEvent={readerEvent} onOpenRace={openRace} onAdvance={() => guarded(async () => setEvent(await api.advanceEvent(event.id)))} />}
 
@@ -448,10 +477,16 @@ export default function App() {
           <SystemUpdates onError={setError} />
         )}
       </main>
-      {pinDialog && <OperatorPinChange busy={busy} onClose={() => setPinDialog(false)} onChange={(currentPin, newPin) => void guarded(async () => {
-        await api.changePin(currentPin, newPin);
+      {pinDialog && <OperatorPinChange busy={busy} recoveryConfigured={recoveryConfigured} onClose={() => setPinDialog(false)} onChange={(currentPin, newPin) => void guarded(async () => {
+        applySession(await api.changePin(currentPin, newPin));
+        setPinDialog(false);
+      })} onCreateRecovery={(currentPin) => void guarded(async () => {
+        const created = await api.createRecoveryCode(currentPin);
+        setRecoveryConfigured(true);
+        setRecoveryCode(created.recovery_code);
         setPinDialog(false);
       })} />}
+      {recoveryCode && <RecoveryCodeDialog code={recoveryCode} onClose={() => setRecoveryCode(null)} />}
     </div>
   );
 }

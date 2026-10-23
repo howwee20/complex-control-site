@@ -20,6 +20,12 @@ Browser limits: the website tab must stay in the foreground until the controller
 
 `/field-update.html` remains the explicit way to update a controller and follows the same rules.
 
+### Operator access and racer profiles
+
+Controllers need only their four-digit operator PIN; no account or internet. The controller prompts the owner to replace the initial PIN and to create an owner recovery code, which resets a forgotten PIN offline (**Forgot PIN?**). Without the code, an empty `complex-control-reset-pin` file on the SD card's boot partition restores the initial PIN.
+
+**Racer Profiles** on a controller can download a roster backup, restore from a file, and restore the copy this phone keeps automatically (including a copy from a previous controller after an SD card replacement). Every restore shows a preview first: the controller's newer changes are kept, conflicting edits wait for the owner's choice, a tag is never given to two racers, and event rosters are never changed. The website preview can download its demo racers in the same format for restoring onto a controller.
+
 ## Deployment
 
 Pushing to `main` deploys the site through GitHub Pages. The custom domain is configured as `mycomplexcontrol.com`.

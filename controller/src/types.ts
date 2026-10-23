@@ -100,6 +100,49 @@ export interface RacerProfile extends EntrantInput {
   id: string;
   created_at: string;
   updated_at: string;
+  revision?: number;
+}
+
+export interface RosterProfileRecord extends EntrantInput {
+  id: string;
+  revision?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface RosterDocument {
+  format: "complex-control-roster-v1";
+  controller_id?: string | null;
+  source?: string | null;
+  roster_seq?: number | null;
+  exported_at?: string | null;
+  profiles: RosterProfileRecord[];
+  tombstones: Array<{ id: string; revision: number; deleted_at?: string | null }>;
+}
+
+export type RosterResolution = "use_incoming" | "keep_local";
+
+export interface RosterChange {
+  action: "add" | "update" | "restore" | "delete" | "unchanged" | "keep_local" | "conflict" | "skip_delete";
+  profile_id: string;
+  reason: string;
+  conflict?: "edited_both" | "tag_in_use" | null;
+  incoming?: RosterProfileRecord | null;
+  local?: RosterProfileRecord | null;
+}
+
+export interface RosterRestoreView {
+  applied: boolean;
+  counts: Record<string, number>;
+  conflicts: number;
+  changes: RosterChange[];
+  roster_seq: number;
+}
+
+export interface ControllerIdentity {
+  controller_id: string;
+  roster_seq: number;
+  version: string;
 }
 
 export interface EntrantStanding extends EntrantInput {

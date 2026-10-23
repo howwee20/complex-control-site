@@ -1,5 +1,6 @@
 import type {
   BackupList,
+  ControllerIdentity,
   ControlState,
   EventCreate,
   EventSnapshot,
@@ -16,6 +17,9 @@ import type {
   RaceSnapshot,
   RaceSummary,
   ReaderMessage,
+  RosterDocument,
+  RosterResolution,
+  RosterRestoreView,
   UpdatesOverview,
   UpdateStatus,
 } from "./types";
@@ -84,6 +88,30 @@ export const api = {
   deleteEvent: (eventId: string) =>
     request<void>(`/api/events/${eventId}`, { method: "DELETE" }),
   listRacerProfiles: () => request<RacerProfile[]>("/api/racer-profiles"),
+  rosterBackup: () => request<RosterDocument>("/api/racer-profiles/backup"),
+  restoreRoster: (
+    document: RosterDocument,
+    options: { apply?: boolean; applyDeletions?: boolean; resolutions?: Record<string, RosterResolution> } = {},
+  ) => request<RosterRestoreView>("/api/racer-profiles/restore", {
+    method: "POST",
+    body: JSON.stringify({
+      document,
+      apply: options.apply ?? false,
+      apply_deletions: options.applyDeletions ?? false,
+      resolutions: options.resolutions ?? {},
+    }),
+  }),
+  controllerIdentity: () => request<ControllerIdentity>("/api/system/controller"),
+  createRecoveryCode: (currentPin: string) =>
+    request<{ recovery_code: string }>("/api/auth/recovery-code", {
+      method: "POST",
+      body: JSON.stringify({ current_pin: currentPin }),
+    }),
+  recoverPin: (recoveryCode: string, newPin: string) =>
+    request<OperatorSessionView & { recovery_code: string }>("/api/auth/recover", {
+      method: "POST",
+      body: JSON.stringify({ recovery_code: recoveryCode, new_pin: newPin }),
+    }),
   createRacerProfile: (payload: Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">) =>
     request<RacerProfile>("/api/racer-profiles", {
       method: "POST",
