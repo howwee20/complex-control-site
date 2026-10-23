@@ -19,6 +19,29 @@
 }
 
 * { box-sizing: border-box; }
+/* Connection and roster context use the same trackside styling as the controller. */
+.controller-connection { width: min(1140px,100%); margin: 24px auto 64px; }
+.controller-connection h1 { margin: 8px 0 12px; color: #fff; font-size: clamp(2.6rem,6vw,4.4rem); text-transform: uppercase; line-height: .95; }
+.connection-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.connection-card { display: flex; flex-direction: column; align-items: flex-start; position: relative; padding: 30px; border: 1px solid #4a2b31; border-top: 3px solid #d82032; border-radius: 12px; background: #111011; }
+.connection-card h2 { margin: 0 0 16px; color: #fff; font-size: 1.8rem; }
+.connection-card p:not(.eyebrow),.connection-help p { color: #bcb3b6; line-height: 1.55; }
+.connection-card p:not(.eyebrow) { margin: 0 0 24px; }
+.connection-card .link-button { margin-top: auto; text-align: center; }
+.connection-card small { display: block; margin-top: 14px; color: #aaa3a5; font-size: .8rem; line-height: 1.45; }
+.connection-number { position: absolute; top: 18px; right: 22px; color: #7b3c45; font: 800 2rem var(--font-display); }
+.connection-help { max-width: 1140px; margin: 24px auto; padding: 24px 30px; border: 1px solid #392b30; border-radius: 12px; background: #100e10; }
+.connection-help h2 { margin-top: 0; }
+.connection-help a { color: #ff8993; }
+.preview-storage-notice { display: flex; align-items: center; justify-content: space-between; gap: 24px; max-width: 1280px; margin: 10px auto 24px; padding: 20px 24px; border: 1px solid #64434b; border-left: 4px solid #d82032; border-radius: 8px; background: #181215; }
+.preview-storage-notice p { margin: 6px 0 0; color: #bcb3b6; font-size: .86rem; line-height: 1.45; }
+.preview-storage-notice button { flex-shrink: 0; }
+.tag-input button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 760px) {
+  .connection-options { grid-template-columns: 1fr; }
+  .connection-card,.connection-help { padding: 24px; }
+  .preview-storage-notice { align-items: flex-start; flex-direction: column; gap: 16px; }
+}
 body { margin: 0; min-width: 320px; min-height: 100vh; background: #ffffff; line-height: 1.35; }
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
@@ -402,6 +425,7 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 }
 
 @media (max-width: 640px) {
+  .controller-connection > .section-heading,.profiles-shell > .section-heading { flex-direction: column; align-items: flex-start; gap: 12px; }
   .topbar { height: 66px; padding: 0 12px; gap: 8px; }.wordmark img { width: 132px; height: 44px; }nav button { padding: 0 8px; font-size: .64rem; }.setup-shell,.history-shell { margin: 12px auto; }
   .product-shell { margin-top: 0; padding: 0 12px 55px; }.jake-home-headline { font-size: clamp(1.55rem,7vw,2.35rem); line-height: 1; }.jake-home-intro { margin-bottom: 12px; padding: 13px 12px; font-size: 1rem; line-height: 1.45; }.jake-home-story figure { margin-bottom: 10px; }.jake-home-story img { border-radius: 5px; }.jake-home-story figcaption { margin-top: 5px; }.product-list { grid-template-columns: 1fr; }.product-list article { min-height: 0; padding: 22px; border-right: 0; border-bottom: 1px solid var(--line); }.product-list article:last-child { border-bottom: 0; }.product-list h2 { margin-top: 12px; }
   .shop-grid { grid-template-columns: 1fr; }.shop-grid img { height: 220px; }

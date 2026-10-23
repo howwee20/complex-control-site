@@ -18,7 +18,7 @@ export function OperatorLogin({ busy, onLogin }: LoginProps) {
       <form className="access-card" onSubmit={submit}>
         <p className="eyebrow">Operator access</p>
         <h1>Enter PIN</h1>
-        <p>Use the four-digit PIN for this controller.</p>
+        <p>Use the four-digit PIN for this controller. Sign-in works without internet, and this browser stays signed in for up to 30 days.</p>
         <label>
           <span>Operator PIN</span>
           <input

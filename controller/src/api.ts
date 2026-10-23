@@ -18,26 +18,39 @@ import type {
 } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
-  if (!response.ok) {
-    let detail = `Request failed (${response.status})`;
-    try {
-      const body = (await response.json()) as { detail?: string | Array<{ msg: string }> };
-      if (typeof body.detail === "string") detail = body.detail;
-      if (Array.isArray(body.detail)) detail = body.detail.map((item) => item.msg).join("; ");
-    } catch {
-      // Preserve the status-based message when the response is not JSON.
+  const controller = !init?.signal && (!init?.method || init.method === "GET")
+    ? new AbortController() : null;
+  const timer = controller ? window.setTimeout(() => controller.abort(), 8000) : undefined;
+  try {
+    const response = await fetch(path, {
+      ...init,
+      signal: init?.signal ?? controller?.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+    if (!response.ok) {
+      let detail = `Request failed (${response.status})`;
+      try {
+        const body = (await response.json()) as { detail?: string | Array<{ msg: string }> };
+        if (typeof body.detail === "string") detail = body.detail;
+        if (Array.isArray(body.detail)) detail = body.detail.map((item) => item.msg).join("; ");
+      } catch {
+        // Preserve the status-based message when the response is not JSON.
+      }
+      throw new Error(detail);
     }
-    throw new Error(detail);
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  } catch (error) {
+    if (controller?.signal.aborted) {
+      throw new Error("The controller did not respond. Check your connection and try again.");
+    }
+    throw error;
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
   }
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
 }
 
 export const api = {

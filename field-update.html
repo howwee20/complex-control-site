@@ -15,10 +15,13 @@
       .status { margin: 14px 0 0; color: #fff; font-weight: 700; text-align: center; }
       button { width: 100%; min-height: 54px; border: 0; border-radius: 9px; padding: 0 18px; background: #d82032; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
       button:disabled { opacity: .45; cursor: wait; }
+      nav { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+      a { color: #ff8993; }
     </style>
   </head>
   <body>
     <main>
+      <nav aria-label="Navigation"><a href="/">Home</a><a href="/?view=connect">Race Control</a></nav>
       <h1>Update Complex Control</h1>
       <button id="prepare" type="button">Update Pi</button>
       <div class="status" id="status">Ready.</div>
