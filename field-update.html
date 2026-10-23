@@ -17,6 +17,7 @@
       button:disabled { opacity: .45; cursor: wait; }
       nav { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
       a { color: #ff8993; }
+      .note { margin: 18px 0 0; color: #bcb3b6; font-size: .9rem; line-height: 1.5; text-align: center; }
     </style>
   </head>
   <body>
@@ -25,7 +26,8 @@
       <h1>Update Complex Control</h1>
       <button id="prepare" type="button">Update Pi</button>
       <div class="status" id="status">Ready.</div>
+      <p class="note">Updates are saved on the Pi and install automatically when no race is running. Racing never waits for an update. Keep this page open until the Pi page appears.</p>
     </main>
-    <script src="/field-update.js?updater=7" defer></script>
+    <script src="/field-update.js?updater=8" defer></script>
   </body>
 </html>

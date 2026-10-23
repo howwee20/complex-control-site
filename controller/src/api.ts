@@ -1,4 +1,5 @@
 import type {
+  BackupList,
   ControlState,
   EventCreate,
   EventSnapshot,
@@ -7,6 +8,7 @@ import type {
   FrontendUpdateStatus,
   HealthView,
   LiveMessage,
+  NetworkStatus,
   OperatorSessionView,
   RaceCreate,
   RacerProfile,
@@ -14,6 +16,7 @@ import type {
   RaceSnapshot,
   RaceSummary,
   ReaderMessage,
+  UpdatesOverview,
   UpdateStatus,
 } from "./types";
 
@@ -132,6 +135,11 @@ export const api = {
   readerEvents: () => request<EventView[]>("/api/reader/observations?limit=10"),
   updateStatus: () => request<UpdateStatus>("/api/system/update"),
   frontendUpdateStatus: () => request<FrontendUpdateStatus>("/api/system/frontend-update"),
+  updatesOverview: () => request<UpdatesOverview>("/api/system/updates"),
+  installSystemNow: () => request<UpdateStatus>("/api/system/update/install-now", { method: "POST" }),
+  networkStatus: () => request<NetworkStatus>("/api/system/network"),
+  backups: () => request<BackupList>("/api/system/backups"),
+  backupDownloadUrl: "/api/system/backups/download",
   installUpdate: async (file: File): Promise<UpdateStatus> => {
     const response = await fetch("/api/system/update", {
       method: "POST",

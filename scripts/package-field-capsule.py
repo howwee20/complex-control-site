@@ -10,7 +10,7 @@ import tarfile
 from pathlib import Path
 
 CAPSULE_FORMAT = "complex-control-frontend-v1"
-BACKEND_API = "3"
+BACKEND_API = "4"
 
 
 def json_bytes(value: object) -> bytes:

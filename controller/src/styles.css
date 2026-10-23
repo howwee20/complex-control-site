@@ -30,6 +30,7 @@
 .connection-card .link-button { margin-top: auto; text-align: center; }
 .connection-card small { display: block; margin-top: 14px; color: #aaa3a5; font-size: .8rem; line-height: 1.45; }
 .connection-number { position: absolute; top: 18px; right: 22px; color: #7b3c45; font: 800 2rem var(--font-display); }
+.connection-result { max-width: 1140px; margin: 0 0 20px; padding: 14px 18px; border: 1px solid #4a2b31; border-left: 4px solid #d82032; border-radius: 8px; background: #181215; color: #f3ecee; line-height: 1.5; }
 .connection-help { max-width: 1140px; margin: 24px auto; padding: 24px 30px; border: 1px solid #392b30; border-radius: 12px; background: #100e10; }
 .connection-help h2 { margin-top: 0; }
 .connection-help a { color: #ff8993; }
@@ -318,6 +319,15 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .trackside-ui .product-list h2 { color: #ffffff; }
 
 .updates-shell { width: min(1120px,calc(100% - 48px)); margin: 72px auto; }
+.update-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.update-grid .update-card { align-content: start; }
+.update-grid .update-card-simple .update-message { text-align: left; }
+.update-detail { color: var(--muted); font-size: .82rem; line-height: 1.45; }
+.network-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.network-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; font-size: .86rem; }
+.network-list span { color: var(--muted); }
+.network-list a { color: inherit; font-weight: 700; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .update-grid { grid-template-columns: 1fr; } .updates-shell { width: calc(100% - 32px); margin: 32px auto; } }
 .update-card { display: grid; grid-template-columns: 1fr auto auto; align-items: end; gap: 24px; padding: 28px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 18px; background: var(--panel); }
 .update-card-simple { grid-template-columns: 1fr; align-items: stretch; }
 .update-card-simple .update-message { margin: 0; text-align: center; }
