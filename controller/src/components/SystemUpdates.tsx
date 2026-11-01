@@ -5,6 +5,8 @@ import type { BackupList, FrontendUpdateStatus, NetworkLink, NetworkStatus, Upda
 
 interface SystemUpdatesProps {
   onError: (message: string | null) => void;
+  onChangePin?: () => void;
+  onLock?: () => void;
 }
 
 const PENDING = new Set(["staged", "waiting", "installing", "verifying"]);
@@ -18,7 +20,19 @@ export function interfaceSummary(status: FrontendUpdateStatus | null): string {
       : `${installed} in use · installing ${status.staged.version}`;
   }
   if (status.state === "failed" || status.state === "error") return `${installed} in use · last update failed, nothing changed`;
-  return `${installed} · up to date on this controller`;
+  return `${installed} installed`;
+}
+
+export function automaticUpdateSummary(network: NetworkStatus | null): string {
+  const status = network?.updates;
+  if (!status || status.state === "unchecked") return "Waiting for an automatic update check.";
+  if (!status.enabled) return "Automatic downloads are not configured on this controller.";
+  if (status.state === "current") return "The latest checked interface is installed.";
+  if (status.state === "ahead") return "This controller is newer than the published interface.";
+  if (status.state === "staged") return "The latest interface is saved and will install when racing is idle.";
+  if (status.state === "offline" || status.state === "download_failed") return "Cannot reach the update server. The installed version keeps working.";
+  if (status.state === "incompatible") return "A newer interface needs a timing-system update first.";
+  return "The latest download could not be verified. The installed version keeps working.";
 }
 
 export function systemSummary(status: UpdateStatus | null, version: string | null): string {
@@ -50,7 +64,7 @@ export function internetSummary(network: NetworkStatus | null): string {
   return "Racing does not need internet";
 }
 
-export function SystemUpdates({ onError }: SystemUpdatesProps) {
+export function SystemUpdates({ onError, onChangePin, onLock }: SystemUpdatesProps) {
   const [frontend, setFrontend] = useState<FrontendUpdateStatus | null>(null);
   const [system, setSystem] = useState<UpdateStatus | null>(null);
   const [raceRunning, setRaceRunning] = useState(false);
@@ -128,11 +142,13 @@ export function SystemUpdates({ onError }: SystemUpdatesProps) {
 
   return (
     <section className="updates-shell">
-      <div className="section-heading"><div><h2>Updates</h2><p className="section-copy">Updates are saved immediately and install only when no race is running. Racing is never interrupted.</p></div></div>
+      <div className="section-heading"><div><p className="eyebrow">This controller</p><h2>Settings</h2><p className="section-copy">Connection, updates, backups, and operator access.</p></div></div>
       <div className="update-grid">
         <article className="update-card update-card-simple">
           <p className="eyebrow">Controller interface</p>
           <p className="update-message">{interfaceSummary(frontend)}</p>
+          <p className="update-detail">{automaticUpdateSummary(network)}</p>
+          <p className="update-detail">Signed updates install only when no race is running. When this controller has internet, it checks automatically every 15 minutes.</p>
           <a className="primary-button update-link" href="https://mycomplexcontrol.com/field-update.html">Update Pi from this phone</a>
           {frontend?.state === "failed" && frontend.message && <p className="update-detail">{frontend.message}</p>}
         </article>
@@ -140,6 +156,7 @@ export function SystemUpdates({ onError }: SystemUpdatesProps) {
         <article className="update-card update-card-simple">
           <p className="eyebrow">Timing system</p>
           <p className="update-message">{systemSummary(system, backendVersion)}</p>
+          <p className="update-detail">Signed system releases install after racing and a quiet period. A failed installation restores the previous version and its data.</p>
           {system?.last_error && system.state === "failed" && <p className="update-detail">{system.last_error}</p>}
           {systemPending && (
             <button className="primary-button" type="button" disabled={raceRunning} onClick={() => void installNow()}>
@@ -174,8 +191,18 @@ export function SystemUpdates({ onError }: SystemUpdatesProps) {
               ? `Last automatic backup ${formatDate(newestBackup.created_at)} · ${backups?.backups.length} kept on this controller`
               : backups?.available === false ? "Automatic backups are not available on this device" : "First automatic backup runs when no race is running"}
           </p>
+          <p className="update-detail">A complete backup is saved daily while racing is idle. The newest 14 copies stay on this controller. Download a copy here to protect against a lost or damaged SD card.</p>
           <a className="secondary-button update-link" href={api.backupDownloadUrl} download>Download full backup to this device</a>
         </article>
+
+        {(onChangePin || onLock) && <article className="update-card update-card-simple">
+          <p className="eyebrow">Operator access</p>
+          <p className="update-detail">Your PIN works without internet. Keep an owner recovery code somewhere safe in case you forget it.</p>
+          <div className="settings-actions">
+            {onChangePin && <button className="secondary-button" onClick={onChangePin}>PIN and recovery code</button>}
+            {onLock && <button className="text-button" onClick={onLock}>Lock this browser</button>}
+          </div>
+        </article>}
       </div>
     </section>
   );

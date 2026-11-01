@@ -403,6 +403,7 @@ export interface NetworkStatus {
   ethernet: boolean;
   links: NetworkLink[];
   internet: { state: "online" | "offline" | "unknown"; checked_at: string | null; detail: string | null };
+  updates?: { enabled: boolean; state: string; checked_at: string | null; latest_version: string | null };
   timing_requires_internet: boolean;
 }
 

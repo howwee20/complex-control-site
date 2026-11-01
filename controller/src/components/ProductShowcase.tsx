@@ -1,6 +1,7 @@
 interface ProductShowcaseProps {
   onOpenSoftware: () => void;
   onOpenShop: () => void;
+  onConnect: () => void;
 }
 
 const stories = [
@@ -26,17 +27,16 @@ const stories = [
   },
 ];
 
-export function ProductShowcase({ onOpenSoftware, onOpenShop }: ProductShowcaseProps) {
+export function ProductShowcase({ onOpenSoftware, onOpenShop, onConnect }: ProductShowcaseProps) {
   return (
     <section className="product-shell jake-home">
       <p className="jake-home-intro">
-        <strong>
-          Complex Control is a user-friendly transponder timing and race management system built for racers and track operators.
-          Designed to be cost-effective without sacrificing features, it delivers the tools needed to run and manage races on a
-          desktop or mobile device. Explore the{" "}
-          <button type="button" onClick={onOpenSoftware}>Simulator Mode</button> to experience the system and see how it works before you buy.
-        </strong>
+        RFID timing and race management for your track. Register racers, run events, and follow live results from a phone or computer. Racing and saved results stay on your controller, even without internet.
       </p>
+      <div className="home-actions">
+        <button className="primary-button" onClick={onConnect}>Connect controller</button>
+        <button className="secondary-button" onClick={onOpenSoftware}>Try the demo</button>
+      </div>
 
       <div className="jake-home-story" aria-label="Complex Control in action">
         {stories.map((story) => (

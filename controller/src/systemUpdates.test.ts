@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interfaceSummary, internetSummary, systemSummary } from "./components/SystemUpdates";
+import { automaticUpdateSummary, interfaceSummary, internetSummary, systemSummary } from "./components/SystemUpdates";
 import type { FrontendUpdateStatus, NetworkStatus, UpdateStatus } from "./types";
 
 const frontend = (overrides: Partial<FrontendUpdateStatus>): FrontendUpdateStatus => ({
@@ -11,7 +11,7 @@ describe("update status wording", () => {
     expect(interfaceSummary(frontend({ state: "staged", deferred_reason: "race_running", staged: { version: "site-new" } })))
       .toBe("site-old in use · site-new is saved and installs after the current race");
     expect(interfaceSummary(frontend({ state: "failed" }))).toContain("nothing changed");
-    expect(interfaceSummary(frontend({ state: "complete" }))).toBe("site-old · up to date on this controller");
+    expect(interfaceSummary(frontend({ state: "complete" }))).toBe("site-old installed");
   });
 
   it("describes when a system release will install", () => {
@@ -28,5 +28,16 @@ describe("update status wording", () => {
     expect(internetSummary(network("online"))).toContain("downloads interface updates itself");
     expect(internetSummary(network("offline"))).toContain("racing does not need internet");
     expect(internetSummary(network("unknown"))).toBe("Racing does not need internet");
+  });
+
+  it("does not claim the installed interface is current without a successful feed check", () => {
+    const network = (state: string, enabled = true) => ({ updates: { state, enabled } }) as NetworkStatus;
+    expect(automaticUpdateSummary(null)).toContain("Waiting");
+    expect(automaticUpdateSummary(network("disabled", false))).toContain("not configured");
+    expect(automaticUpdateSummary(network("offline"))).toContain("Cannot reach");
+    expect(automaticUpdateSummary(network("invalid"))).toContain("could not be verified");
+    expect(automaticUpdateSummary(network("current"))).toContain("latest checked interface");
+    expect(automaticUpdateSummary(network("ahead"))).toContain("newer than the published interface");
+    expect(automaticUpdateSummary(network("staged"))).toContain("racing is idle");
   });
 });

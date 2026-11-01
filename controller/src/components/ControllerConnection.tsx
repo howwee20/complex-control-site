@@ -71,7 +71,7 @@ export function ControllerConnection({ destination, onHome }: Props) {
       <div className="section-heading">
         <div>
           <p className="eyebrow">Your track. Your controller.</p>
-          <h1>Race Control</h1>
+          <h1>Connect your controller</h1>
           <p className="section-copy">Connect to your controller to use your saved racers, run a race, and see live timing. No app and no internet are needed at the track.</p>
         </div>
         <span className="quiet-label">Racing works offline</span>
@@ -95,7 +95,7 @@ export function ControllerConnection({ destination, onHome }: Props) {
           <h2>Use a router or cable</h2>
           <p>Connect the controller’s Ethernet port to your router and join that router’s Wi-Fi, or plug it straight into a laptop. Neither needs internet. A direct cable takes about 30 seconds after power-on.</p>
           <button className="secondary-button link-button" type="button" onClick={() => open(local)}>Open on local network</button>
-          <small>If your device cannot find the controller by name, open Race Control over ComplexControl Wi-Fi and use the address shown under Updates → Network.</small>
+          <small>If your device cannot find the controller by name, open Race Control over ComplexControl Wi-Fi and use the address shown under Settings → Network.</small>
         </article>
       </div>
 
