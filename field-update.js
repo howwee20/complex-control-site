@@ -4,7 +4,7 @@
   const DB_NAME = "complex-control-field-updates";
   const STORE = "capsules";
   const KEY = "latest";
-  const UPDATER_VERSION = "7";
+  const UPDATER_VERSION = "8";
   const UPDATER_VERSION_KEY = "complex-control-field-updater-version";
   const CONTROLLER_ORIGIN = "http://10.42.0.1:8000";
   const RECEIVER_URL = `${CONTROLLER_ORIGIN}/field-update-receiver.html`;
@@ -94,12 +94,12 @@
       finish(new Error("Could not reach the Pi. Stay connected to ComplexControl and tap Update Pi again."));
     }, 120000);
 
-    const finish = (error) => {
+    const finish = (error, state = "complete") => {
       window.clearTimeout(deadline);
       if (retryTimer !== null) window.clearTimeout(retryTimer);
       window.removeEventListener("message", onMessage);
       if (error) reject(error);
-      else resolve();
+      else resolve(state);
     };
 
     const connect = () => {
@@ -115,12 +115,25 @@
     const onMessage = (event) => {
       if (event.origin !== CONTROLLER_ORIGIN || event.source !== receiver) return;
       if (event.data?.type === "complex-control-field-update-complete") {
-        finish();
+        finish(null, event.data.state === "staged" ? "staged" : event.data.state === "current" ? "current" : "complete");
+        return;
+      }
+      if (event.data?.type === "complex-control-field-update-error") {
+        finish(new Error(`${event.data.detail || "The Pi kept its current version."} Racing is not affected.`));
         return;
       }
       if (event.data?.type !== "complex-control-field-receiver-ready" || sent) return;
       receiverReady = true;
       if (retryTimer !== null) window.clearTimeout(retryTimer);
+      // Receivers before protocol 2 run controller software that ended active
+      // races to install an update. Such software accepts only backend API 3
+      // capsules, so a newer capsule is rejected there before anything happens;
+      // an API 3 capsule is never sent to it.
+      if ((event.data.protocol ?? 1) < 2 && String(cached.manifest.backend_api ?? "3") === "3") {
+        try { receiver.location.replace(`${CONTROLLER_ORIGIN}/?view=setup`); } catch { /* window closed */ }
+        finish(new Error("This Pi needs its one-time system update before it can take this update. Racing is not affected."));
+        return;
+      }
       sent = true;
       receiver.postMessage(
         {
@@ -135,7 +148,7 @@
         CONTROLLER_ORIGIN,
         [cached.capsule, cached.signature],
       );
-      setStatus("Update delivered. The Pi is verifying, installing, and health-checking it…");
+      setStatus("Update delivered. The Pi is verifying and saving it…");
     };
 
     window.addEventListener("message", onMessage);
@@ -156,9 +169,14 @@
       const cached = await readCached();
       if (!cached) throw new Error("Open this page with cellular service before updating the Pi.");
       setStatus("Connecting to the Pi…");
-      await deliver(cached, receiver);
-      setStatus(`Last update: ${cached.manifest.version} · Successful`);
-      updateButton.textContent = "Pi is up to date";
+      const state = await deliver(cached, receiver);
+      if (state === "staged") {
+        setStatus(`${cached.manifest.version} is saved on the Pi. It installs automatically when no race is running.`);
+        updateButton.textContent = "Update saved on Pi";
+      } else {
+        setStatus(state === "current" ? `The Pi already has ${cached.manifest.version}.` : `Last update: ${cached.manifest.version} · Successful`);
+        updateButton.textContent = "Pi is up to date";
+      }
     } catch (error) {
       try { receiver.close(); } catch { /* The local receiver may already have closed itself. */ }
       setStatus(error instanceof Error ? error.message : "The update could not be completed.");
@@ -170,7 +188,7 @@
   };
 
   updateButton.addEventListener("click", () => void updatePi());
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js?updater=7").catch(() => undefined);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/field-update-sw.js?updater=8").catch(() => undefined);
   updateButton.disabled = true;
   void clearOldCache()
     .then(() => downloadLatest())

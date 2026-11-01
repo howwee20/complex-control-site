@@ -6,7 +6,31 @@ This repository contains one shared Complex Control interface for the public web
 
 The canonical interface lives in `controller/`. Every push to `main` builds it in public preview mode for `mycomplexcontrol.com` and in API-connected mode for a signed controller capsule under `/field/`. The live trackside build connects to the physical reader and race-control backend on the Pi.
 
-After one-time phone setup, the operator walks within range of the powered Pi, opens `/field-update.html`, and taps **Update Pi**. The foreground page downloads the newest capsule over cellular while the phone uses the Pi's remembered `ComplexControl` Wi-Fi for the local transfer. The Pi verifies the signature and compatibility before replacing only the frontend.
+Connect controller opens the connection screen at `/?view=connect`. It offers the controller over its Wi-Fi access point, an Ethernet router, or a direct laptop cable. Controllers open in a separate tab so connection help and website navigation remain available. Local controllers open the Race Hub by default; `/?view=profiles` opens their saved roster after operator sign-in.
+
+The public preview stores demo profiles only in that browser. Real profiles are stored in the Pi database. An empty preview never means a controller's roster is gone.
+
+### Updates travel with the phone
+
+While the phone has internet, the connection screen caches the newest signed controller capsule (the same cache `/field-update.html` uses). Tapping **Open Race Control** opens the controller's receiver page in that tap. A receiver that reports protocol 2 runs controller software (backend 0.7.0+, howwee20/complex-control#7) that saves the capsule durably and installs it only while no race is running, then continues straight to Race Control. Older receivers belong to software that ended active races to update, so nothing is sent to them; they are simply opened.
+
+Capsules now declare backend API `4`. Controllers older than 0.7.0 accept only API `3`, so they reject these capsules before taking any action. They receive new interfaces after their one-time system update.
+
+Browser limits: the website tab must stay in the foreground until the controller page appears. A locked or closed phone cannot carry an update, and racing always continues on the installed version. A controller wired to an internet router downloads capsules itself between races.
+
+`/field-update.html` remains the explicit way to update a controller and follows the same rules.
+
+### Operator access and racer profiles
+
+Controllers need only their four-digit operator PIN; no account or internet. The controller prompts the owner to replace the initial PIN and to create an owner recovery code, which resets a forgotten PIN offline (**Forgot PIN?**). Without the code, an empty `complex-control-reset-pin` file on the SD card's boot partition restores the initial PIN.
+
+**Racers** on a controller can download a roster backup, restore from a file, and restore the copy this phone keeps automatically (including a copy from a previous controller after an SD card replacement). Every restore shows a preview first: the controller's newer changes are kept, conflicting edits wait for the owner's choice, a tag is never given to two racers, and event rosters are never changed. The website preview can download its demo racers in the same format for restoring onto a controller.
+
+## Controller navigation
+
+The public website has Home, Try demo, Connect controller, and Shop. The local controller has Race Hub, Racers, Results, and Settings. Current event and race links stay together below the main navigation. Settings holds update status, network addresses, daily full backups, and PIN/recovery controls. The demo clearly labels browser-only data.
+
+An installed interface is not described as up to date until its update feed has been checked successfully. Offline or unconfigured feeds keep showing the installed version without claiming a successful check.
 
 ## Deployment
 

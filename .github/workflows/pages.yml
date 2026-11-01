@@ -53,7 +53,7 @@ jobs:
 
           index = Path("_site/index.html")
           page = index.read_text(encoding="utf-8-sig")
-          loader = '<script src="/field-controller-link.js"></script>'
+          loader = '<script src="/field-controller-link.js?navigation=2"></script>'
           if loader not in page:
               page = page.replace("</body>", f"    {loader}\n  </body>")
           index.write_text(page, encoding="utf-8")

@@ -15,7 +15,8 @@ export function formatClock(value: number): string {
 }
 
 export function formatDate(value: string): string {
-  const normalized = value.endsWith("Z") ? value : `${value}Z`;
+  // The controller stores naive UTC times; newer endpoints include an offset.
+  const normalized = /(Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}Z`;
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",

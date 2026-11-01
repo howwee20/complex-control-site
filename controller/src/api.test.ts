@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { connectRace } from "./api";
+import { api, connectRace } from "./api";
 import type { RaceSnapshot } from "./types";
 
 class FakeSocket {
@@ -32,6 +32,15 @@ beforeEach(() => {
 afterEach(() => { dispose?.(); dispose = undefined; vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 async function flush() { await vi.advanceTimersByTimeAsync(0); }
+
+it("ends an unresponsive startup request so the operator can retry", async () => {
+  vi.stubGlobal("fetch", vi.fn((_path, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new Error("aborted")));
+  })));
+  const result = expect(api.authSession()).rejects.toThrow("Check your connection and try again");
+  await vi.advanceTimersByTimeAsync(8000);
+  await result;
+});
 
 describe("race display recovery", () => {
   it("loads saved final results when the phone reconnects after missing the finish", async () => {

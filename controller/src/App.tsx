@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api, connectRace, connectReader } from "./api";
 import { EventControl } from "./components/EventControl";
-import { OperatorLogin, OperatorPinChange } from "./components/OperatorAccess";
+import { ControllerConnection, type ControllerDestination } from "./components/ControllerConnection";
+import { OperatorLogin, OperatorPinChange, RecoveryCodeDialog } from "./components/OperatorAccess";
 import { PublicDisplay } from "./components/PublicDisplay";
 import { RaceControl } from "./components/RaceControl";
 import { RaceSetup } from "./components/RaceSetup";
@@ -16,13 +17,14 @@ import type {
   EventSnapshot,
   EventSummary,
   EventView,
+  OperatorSessionView,
   RaceFormat,
   RaceSnapshot,
   RacerProfile,
 } from "./types";
 
-type Screen = "product" | "shop" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display";
-type AccessState = "checking" | "open" | "locked";
+type Screen = "product" | "shop" | "profiles" | "setup" | "event" | "race" | "history" | "updates" | "display" | "connect";
+type AccessState = "checking" | "open" | "locked" | "unavailable";
 
 const publicPreview = import.meta.env.VITE_PUBLIC_PREVIEW === "true";
 const previewProfilesKey = "complex-control-racer-profiles";
@@ -85,8 +87,14 @@ function projectedRaceCount(payload: EventCreate): number {
 export default function App() {
   const [screen, setScreen] = useState<Screen>(() => {
     const requestedView = new URLSearchParams(window.location.search).get("view");
-    return requestedView === "setup" ? "setup" : "product";
+    if (requestedView === "profiles") return "profiles";
+    if (publicPreview && requestedView === "connect") return "connect";
+    if (!publicPreview && (requestedView === "settings" || requestedView === "updates")) return "updates";
+    if (!publicPreview && (requestedView === "results" || requestedView === "history")) return "history";
+    return requestedView === "setup" || !publicPreview ? "setup" : "product";
   });
+  const [connectionDestination, setConnectionDestination] = useState<ControllerDestination>("setup");
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [savedEvents, setSavedEvents] = useState<EventSummary[]>(() => publicPreview ? previewEvents() : []);
   const [profiles, setProfiles] = useState<RacerProfile[]>(() => publicPreview ? previewProfiles() : []);
   const [event, setEvent] = useState<EventSnapshot | null>(null);
@@ -99,6 +107,16 @@ export default function App() {
   const [access, setAccess] = useState<AccessState>(publicPreview ? "open" : "checking");
   const [authEnabled, setAuthEnabled] = useState(false);
   const [pinDialog, setPinDialog] = useState(false);
+  const [pinIsDefault, setPinIsDefault] = useState(false);
+  const [recoveryConfigured, setRecoveryConfigured] = useState(true);
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+
+  const applySession = (session: OperatorSessionView) => {
+    setAuthEnabled(session.enabled);
+    // Older controllers do not report these; never nag in that case.
+    setPinIsDefault(session.pin_is_default === true);
+    setRecoveryConfigured(session.recovery_configured !== false);
+  };
 
   const refreshEvents = useCallback(async () => setSavedEvents(await api.listEvents()), []);
   const loadOperatorData = useCallback(async () => {
@@ -111,18 +129,27 @@ export default function App() {
 
   useEffect(() => {
     if (publicPreview) return;
+    let cancelled = false;
+    setAccess("checking");
+    setError(null);
     void api.authSession()
       .then(async (session) => {
-        setAuthEnabled(session.enabled);
+        if (cancelled) return;
+        applySession(session);
         if (!session.enabled || session.authenticated) {
-          setAccess("open");
           await loadOperatorData();
+          if (!cancelled) setAccess("open");
         } else {
           setAccess("locked");
         }
       })
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : "Startup failed"));
-  }, [loadOperatorData]);
+      .catch((caught: unknown) => {
+        if (cancelled) return;
+        setAccess("unavailable");
+        setError(caught instanceof Error ? caught.message : "Controller connection failed");
+      });
+    return () => { cancelled = true; };
+  }, [loadOperatorData, connectionAttempt]);
 
   useEffect(() => {
     if (publicPreview || access !== "open") return;
@@ -294,6 +321,11 @@ export default function App() {
     navigate("setup");
   };
 
+  const connectController = (destination: ControllerDestination = "setup") => {
+    setConnectionDestination(destination);
+    navigate("connect");
+  };
+
   if (screen === "display" && race) {
     return <div className="display-shell"><button className="display-exit" onClick={() => setScreen("race")}>Exit display</button><PublicDisplay race={race} /></div>;
   }
@@ -306,26 +338,21 @@ export default function App() {
           href="/"
           onClick={(event) => {
             event.preventDefault();
-            navigate("product");
+            navigate(publicPreview ? "product" : "setup");
           }}
           aria-label="Complex Control home"
         >
           <img src="/complex-control-logo.png" alt="Complex Control — Timing, Control, Results" />
         </a>
-        <nav>
+        <nav data-controller-navigation="true" aria-label="Main navigation">
           {publicPreview && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
-          {publicPreview && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
-          {publicPreview && <button className={screen === "setup" ? "active" : ""} onClick={openController}>Let's Go Racing</button>}
-          {publicPreview && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop Now</button>}
-          {!publicPreview && access === "open" && <button className={screen === "product" ? "active" : ""} onClick={() => navigate("product")}>Home</button>}
-          {!publicPreview && access === "open" && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racer Profiles</button>}
-          {!publicPreview && access === "open" && <button className={screen === "setup" || screen === "history" ? "active" : ""} onClick={() => navigate("setup")}>Let's Go Racing</button>}
-          {!publicPreview && access === "open" && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop Now</button>}
-          {!publicPreview && access === "open" && event && <button className={screen === "event" ? "active" : ""} onClick={() => navigate("event")}>Schedule</button>}
-          {!publicPreview && access === "open" && race && <button className={screen === "race" ? "active" : ""} onClick={() => setScreen("race")}>Race control</button>}
-          {!publicPreview && access === "open" && <button className={screen === "updates" ? "active" : ""} onClick={() => navigate("updates")}>Updates</button>}
-          {!publicPreview && access === "open" && authEnabled && <button onClick={() => setPinDialog(true)}>PIN</button>}
-          {!publicPreview && access === "open" && authEnabled && <button onClick={() => guarded(async () => { await api.logout(); setAccess("locked"); setEvent(null); setRace(null); })}>Lock</button>}
+          {publicPreview && <button className={screen === "setup" || screen === "profiles" ? "active" : ""} onClick={openController}>Try demo</button>}
+          {publicPreview && <button className={screen === "connect" ? "active" : ""} onClick={() => connectController()}>Connect controller</button>}
+          {publicPreview && <button className={screen === "shop" ? "active" : ""} onClick={() => navigate("shop")}>Shop</button>}
+          {!publicPreview && access === "open" && <button className={screen === "setup" || screen === "event" || screen === "race" ? "active" : ""} onClick={() => navigate("setup")}>Race Hub</button>}
+          {!publicPreview && access === "open" && <button className={screen === "profiles" ? "active" : ""} onClick={() => navigate("profiles")}>Racers</button>}
+          {!publicPreview && access === "open" && <button className={screen === "history" ? "active" : ""} onClick={() => navigate("history")}>Results</button>}
+          {!publicPreview && access === "open" && <button className={screen === "updates" ? "active" : ""} onClick={() => navigate("updates")}>Settings</button>}
         </nav>
       </header>
 
@@ -334,23 +361,71 @@ export default function App() {
 
         {!publicPreview && access === "checking" && <div className="product-loading" role="status">Checking operator access…</div>}
 
+        {!publicPreview && access === "unavailable" && (
+          <section className="connection-help" role="status">
+            <h1>Reconnect to your controller</h1>
+            <p>Check that your controller is powered on and this device is still on its Wi-Fi or local network. Your saved racers and results live on the controller.</p>
+            <button className="primary-button" onClick={() => setConnectionAttempt((attempt) => attempt + 1)}>Try connection again</button>
+          </section>
+        )}
+
         {!publicPreview && access === "locked" && <OperatorLogin busy={busy} onLogin={(pin) => void guarded(async () => {
-          await api.login(pin);
-          setAccess("open");
+          applySession(await api.login(pin));
           await loadOperatorData();
+          setAccess("open");
+        })} onRecover={(code, pin) => void guarded(async () => {
+          const recovered = await api.recoverPin(code, pin);
+          applySession(recovered);
+          setRecoveryCode(recovered.recovery_code);
+          await loadOperatorData();
+          setAccess("open");
         })} />}
+
+        {!publicPreview && access === "open" && authEnabled && (pinIsDefault || !recoveryConfigured) && (
+          <aside className="preview-storage-notice" aria-label="Controller access">
+            <div>
+              <strong>{pinIsDefault ? "This controller still uses the initial PIN" : "No owner recovery code yet"}</strong>
+              <p>{pinIsDefault
+                ? "Anyone who knows the published PIN can run races here. Choose your own four-digit PIN."
+                : "Create a recovery code so a forgotten PIN can be reset at the track without internet."}</p>
+            </div>
+            <button className="secondary-button" onClick={() => setPinDialog(true)}>{pinIsDefault ? "Change PIN" : "Create recovery code"}</button>
+          </aside>
+        )}
+
+        {publicPreview && screen === "connect" && <ControllerConnection destination={connectionDestination} onHome={() => navigate("product")} />}
+
+        {publicPreview && (screen === "profiles" || screen === "setup") && (
+          <aside className="preview-storage-notice" aria-label="Website preview storage">
+            <div>
+              <strong>Demo · Saved in this browser</strong>
+              <p>Explore the software here. Connect to your controller for real timing, racers, and results.</p>
+            </div>
+            <div className="demo-actions">
+              <button className="text-button" onClick={() => navigate(screen === "profiles" ? "setup" : "profiles")}>{screen === "profiles" ? "Demo Race Hub" : "Demo racers"}</button>
+              <button className="secondary-button" onClick={() => connectController(screen === "profiles" ? "profiles" : "setup")}>Connect controller</button>
+            </div>
+          </aside>
+        )}
+
+        {!publicPreview && access === "open" && (event || race) && (screen === "setup" || screen === "event" || screen === "race") && (
+          <div className="race-workspace-nav" aria-label="Current event">
+            {event && <button className={screen === "event" ? "active" : ""} onClick={() => navigate("event")}>Event: {event.name}</button>}
+            {race && <button className={screen === "race" ? "active" : ""} onClick={() => navigate("race")}>Race: {race.name}</button>}
+          </div>
+        )}
 
         {access === "open" && screen === "product" && (
           <Suspense fallback={<div className="product-loading" role="status">Loading…</div>}>
-            <ProductShowcase onOpenSoftware={openController} onOpenShop={() => navigate("shop")} />
+            <ProductShowcase onOpenSoftware={openController} onOpenShop={() => navigate("shop")} onConnect={() => connectController()} />
           </Suspense>
         )}
 
         {access === "open" && screen === "shop" && <ShopShowcase onOpenSoftware={openController} />}
 
-        {access === "open" && screen === "setup" && <RaceSetup busy={busy} readerEvent={readerEvent} profiles={profiles} savedEvents={savedEvents} onCreate={createEvent} onOpen={openEvent} onDuplicate={duplicateEvent} onDelete={deleteEvent} onDeleteAll={deleteAllEvents} />}
+        {access === "open" && screen === "setup" && <RaceSetup demo={publicPreview} busy={busy} readerEvent={readerEvent} profiles={profiles} savedEvents={savedEvents} onCreate={createEvent} onOpen={openEvent} onDuplicate={duplicateEvent} onDelete={deleteEvent} onDeleteAll={deleteAllEvents} />}
 
-        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} hardwareAvailable={!publicPreview} />}
+        {access === "open" && screen === "profiles" && <RacerProfiles busy={busy} profiles={profiles} readerEvent={readerEvent} onCreate={createProfile} onUpdate={updateProfile} onDelete={deleteProfile} onRestored={refreshProfiles} onError={setError} hardwareAvailable={!publicPreview} />}
 
         {access === "open" && screen === "event" && event && <EventControl event={event} busy={busy} readerEvent={readerEvent} onOpenRace={openRace} onAdvance={() => guarded(async () => setEvent(await api.advanceEvent(event.id)))} />}
 
@@ -390,7 +465,7 @@ export default function App() {
 
         {access === "open" && screen === "history" && (
           <section className="history-shell">
-            <div className="section-heading"><div><p className="eyebrow">Saved locally</p><h2>Events</h2></div><span className="quiet-label">{savedEvents.length} programs</span></div>
+            <div className="section-heading"><div><p className="eyebrow">Saved on this controller</p><h2>Results</h2><p className="section-copy">Open an event to review its races and results.</p></div><span className="quiet-label">{savedEvents.length} events</span></div>
             <div className="history-list">
               {savedEvents.length === 0 && <p className="empty-state">No saved events yet.</p>}
               {savedEvents.map((item) => (
@@ -405,13 +480,19 @@ export default function App() {
         )}
 
         {access === "open" && screen === "updates" && (
-          <SystemUpdates onError={setError} />
+          <SystemUpdates onError={setError} onChangePin={authEnabled ? () => setPinDialog(true) : undefined} onLock={authEnabled ? () => void guarded(async () => { await api.logout(); setAccess("locked"); setEvent(null); setRace(null); }) : undefined} />
         )}
       </main>
-      {pinDialog && <OperatorPinChange busy={busy} onClose={() => setPinDialog(false)} onChange={(currentPin, newPin) => void guarded(async () => {
-        await api.changePin(currentPin, newPin);
+      {pinDialog && <OperatorPinChange busy={busy} recoveryConfigured={recoveryConfigured} onClose={() => setPinDialog(false)} onChange={(currentPin, newPin) => void guarded(async () => {
+        applySession(await api.changePin(currentPin, newPin));
+        setPinDialog(false);
+      })} onCreateRecovery={(currentPin) => void guarded(async () => {
+        const created = await api.createRecoveryCode(currentPin);
+        setRecoveryConfigured(true);
+        setRecoveryCode(created.recovery_code);
         setPinDialog(false);
       })} />}
+      {recoveryCode && <RecoveryCodeDialog code={recoveryCode} onClose={() => setRecoveryCode(null)} />}
     </div>
   );
 }

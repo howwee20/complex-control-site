@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EntrantInput, EventCreate, EventSummary, EventView, RaceFormat, RacerProfile } from "../types";
 
 interface Props {
+  demo?: boolean;
   busy: boolean;
   readerEvent: EventView | null;
   profiles: RacerProfile[];
@@ -29,7 +30,7 @@ const formats: Array<{ value: RaceFormat; label: string; detail: string }> = [
 
 const chanceFormats: RaceFormat[] = ["HEATS", "TRIPLE_ELIMINATION"];
 
-export function RaceSetup({ busy, readerEvent, profiles, savedEvents, onCreate, onOpen, onDuplicate, onDelete, onDeleteAll }: Props) {
+export function RaceSetup({ demo = false, busy, readerEvent, profiles, savedEvents, onCreate, onOpen, onDuplicate, onDelete, onDeleteAll }: Props) {
   const [selectedSaved, setSelectedSaved] = useState("");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
@@ -177,7 +178,7 @@ export function RaceSetup({ busy, readerEvent, profiles, savedEvents, onCreate, 
   return (
     <section className="race-hub-shell">
       <div className="section-heading">
-        <div><p className="eyebrow">Trackside control</p><h2>Race Hub</h2><p className="section-copy">Build the race here. The Pi stores it and the physical reader scores it.</p></div>
+        <div><p className="eyebrow">{demo ? "Website demo" : "Trackside control"}</p><h2>Race Hub</h2><p className="section-copy">{demo ? "Try the event setup. Demo racers and events are saved only in this browser." : "Build the race here. This controller stores it and the reader scores it."}</p></div>
       </div>
 
       <section className="race-hub-panel saved-races-panel">
@@ -207,7 +208,7 @@ export function RaceSetup({ busy, readerEvent, profiles, savedEvents, onCreate, 
           <div><button type="button" className="primary-button" onClick={() => setSelectedProfiles(new Set(profiles.map((profile) => profile.id)))}>Select All Racers</button><button type="button" className="primary-button" onClick={() => setSelectedProfiles(new Set())} disabled={!allSelected && selectedProfiles.size === 0}>Unselect All Racers</button></div>
         </div>
         <div className="racer-profile-picker">
-          {profiles.length === 0 && <p className="empty-state">No registered racers. Open Racer Profiles in the top menu, or add a race-day racer below.</p>}
+          {profiles.length === 0 && <p className="empty-state">No registered racers. Open Racers, or add a race-day racer below.</p>}
           {profiles.map((profile) => <label key={profile.id}><input type="checkbox" checked={selectedProfiles.has(profile.id)} onChange={(event) => setSelectedProfiles((current) => { const next = new Set(current); if (event.target.checked) next.add(profile.id); else next.delete(profile.id); return next; })} /><span>{profile.driver_name} (#{profile.kart_number})</span><small>{profile.tag_id}</small></label>)}
         </div>
 

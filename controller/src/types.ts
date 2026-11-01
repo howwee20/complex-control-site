@@ -100,6 +100,49 @@ export interface RacerProfile extends EntrantInput {
   id: string;
   created_at: string;
   updated_at: string;
+  revision?: number;
+}
+
+export interface RosterProfileRecord extends EntrantInput {
+  id: string;
+  revision?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface RosterDocument {
+  format: "complex-control-roster-v1";
+  controller_id?: string | null;
+  source?: string | null;
+  roster_seq?: number | null;
+  exported_at?: string | null;
+  profiles: RosterProfileRecord[];
+  tombstones: Array<{ id: string; revision: number; deleted_at?: string | null }>;
+}
+
+export type RosterResolution = "use_incoming" | "keep_local";
+
+export interface RosterChange {
+  action: "add" | "update" | "restore" | "delete" | "unchanged" | "keep_local" | "conflict" | "skip_delete";
+  profile_id: string;
+  reason: string;
+  conflict?: "edited_both" | "tag_in_use" | null;
+  incoming?: RosterProfileRecord | null;
+  local?: RosterProfileRecord | null;
+}
+
+export interface RosterRestoreView {
+  applied: boolean;
+  counts: Record<string, number>;
+  conflicts: number;
+  changes: RosterChange[];
+  roster_seq: number;
+}
+
+export interface ControllerIdentity {
+  controller_id: string;
+  roster_seq: number;
+  version: string;
 }
 
 export interface EntrantStanding extends EntrantInput {
@@ -287,31 +330,84 @@ export interface HealthView {
   environment: string;
   reader_mode: string;
   database: string;
+  schema_revision?: string | null;
+  schema_head?: string | null;
+  frontend_version?: string | null;
+  race_running?: boolean;
 }
 
 export interface OperatorSessionView {
   enabled: boolean;
   authenticated: boolean;
+  pin_is_default?: boolean | null;
+  recovery_configured?: boolean | null;
+}
+
+export interface StagedRelease {
+  version?: string | null;
+  site_commit?: string | null;
+  commit?: string | null;
+  created_at?: string | null;
+  staged_at?: string | null;
 }
 
 export interface UpdateStatus {
-  state: "idle" | "staged" | "installing" | "complete" | "failed" | "error";
+  state: "idle" | "staged" | "waiting" | "installing" | "verifying" | "complete" | "failed" | "error";
   message: string;
+  version?: string;
   filename?: string;
   sha256?: string;
   bytes?: number;
   updated_at?: string;
+  deferred_reason?: "race_running" | "recent_activity" | string;
+  attempts?: number;
+  operator_requested?: boolean;
+  last_error?: string;
+  staged?: StagedRelease | null;
+  current?: { version: string; commit?: string | null; created_at?: string | null };
+  install_requested?: boolean;
 }
 
 export interface FrontendRelease {
   version: string;
   site_commit?: string | null;
   created_at?: string | null;
-  backend_api: string;
+  backend_api?: string;
+  source?: "capsule" | "bundled" | "missing";
 }
 
-export interface FrontendUpdateStatus extends UpdateStatus {
-  version?: string;
+export interface FrontendUpdateStatus extends Omit<UpdateStatus, "current"> {
   site_commit?: string | null;
   current: FrontendRelease;
+  capabilities?: { deferred_install: boolean; receiver_protocol: number; backend_api: string; frontend_apis: string[] };
+}
+
+export interface UpdatesOverview {
+  frontend: FrontendUpdateStatus;
+  system: UpdateStatus;
+  race_running: boolean;
+  install_lease: { version: string; granted_at: string; expires_at: string } | null;
+}
+
+export interface NetworkLink {
+  interface: string;
+  address: string;
+  kind: "wifi_access_point" | "ethernet" | "ethernet_direct" | "wifi_client" | "other";
+  url: string;
+}
+
+export interface NetworkStatus {
+  hostname: string;
+  local_name_url: string;
+  access_point: boolean;
+  ethernet: boolean;
+  links: NetworkLink[];
+  internet: { state: "online" | "offline" | "unknown"; checked_at: string | null; detail: string | null };
+  updates?: { enabled: boolean; state: string; checked_at: string | null; latest_version: string | null };
+  timing_requires_internet: boolean;
+}
+
+export interface BackupList {
+  available: boolean;
+  backups: Array<{ name: string; bytes: number; created_at: string }>;
 }

@@ -1,4 +1,6 @@
 import type {
+  BackupList,
+  ControllerIdentity,
   ControlState,
   EventCreate,
   EventSnapshot,
@@ -7,6 +9,7 @@ import type {
   FrontendUpdateStatus,
   HealthView,
   LiveMessage,
+  NetworkStatus,
   OperatorSessionView,
   RaceCreate,
   RacerProfile,
@@ -14,30 +17,47 @@ import type {
   RaceSnapshot,
   RaceSummary,
   ReaderMessage,
+  RosterDocument,
+  RosterResolution,
+  RosterRestoreView,
+  UpdatesOverview,
   UpdateStatus,
 } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
-  if (!response.ok) {
-    let detail = `Request failed (${response.status})`;
-    try {
-      const body = (await response.json()) as { detail?: string | Array<{ msg: string }> };
-      if (typeof body.detail === "string") detail = body.detail;
-      if (Array.isArray(body.detail)) detail = body.detail.map((item) => item.msg).join("; ");
-    } catch {
-      // Preserve the status-based message when the response is not JSON.
+  const controller = !init?.signal && (!init?.method || init.method === "GET")
+    ? new AbortController() : null;
+  const timer = controller ? window.setTimeout(() => controller.abort(), 8000) : undefined;
+  try {
+    const response = await fetch(path, {
+      ...init,
+      signal: init?.signal ?? controller?.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+    if (!response.ok) {
+      let detail = `Request failed (${response.status})`;
+      try {
+        const body = (await response.json()) as { detail?: string | Array<{ msg: string }> };
+        if (typeof body.detail === "string") detail = body.detail;
+        if (Array.isArray(body.detail)) detail = body.detail.map((item) => item.msg).join("; ");
+      } catch {
+        // Preserve the status-based message when the response is not JSON.
+      }
+      throw new Error(detail);
     }
-    throw new Error(detail);
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  } catch (error) {
+    if (controller?.signal.aborted) {
+      throw new Error("The controller did not respond. Check your connection and try again.");
+    }
+    throw error;
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
   }
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
 }
 
 export const api = {
@@ -68,6 +88,30 @@ export const api = {
   deleteEvent: (eventId: string) =>
     request<void>(`/api/events/${eventId}`, { method: "DELETE" }),
   listRacerProfiles: () => request<RacerProfile[]>("/api/racer-profiles"),
+  rosterBackup: () => request<RosterDocument>("/api/racer-profiles/backup"),
+  restoreRoster: (
+    document: RosterDocument,
+    options: { apply?: boolean; applyDeletions?: boolean; resolutions?: Record<string, RosterResolution> } = {},
+  ) => request<RosterRestoreView>("/api/racer-profiles/restore", {
+    method: "POST",
+    body: JSON.stringify({
+      document,
+      apply: options.apply ?? false,
+      apply_deletions: options.applyDeletions ?? false,
+      resolutions: options.resolutions ?? {},
+    }),
+  }),
+  controllerIdentity: () => request<ControllerIdentity>("/api/system/controller"),
+  createRecoveryCode: (currentPin: string) =>
+    request<{ recovery_code: string }>("/api/auth/recovery-code", {
+      method: "POST",
+      body: JSON.stringify({ current_pin: currentPin }),
+    }),
+  recoverPin: (recoveryCode: string, newPin: string) =>
+    request<OperatorSessionView & { recovery_code: string }>("/api/auth/recover", {
+      method: "POST",
+      body: JSON.stringify({ recovery_code: recoveryCode, new_pin: newPin }),
+    }),
   createRacerProfile: (payload: Pick<RacerProfile, "driver_name" | "kart_number" | "tag_id">) =>
     request<RacerProfile>("/api/racer-profiles", {
       method: "POST",
@@ -119,6 +163,11 @@ export const api = {
   readerEvents: () => request<EventView[]>("/api/reader/observations?limit=10"),
   updateStatus: () => request<UpdateStatus>("/api/system/update"),
   frontendUpdateStatus: () => request<FrontendUpdateStatus>("/api/system/frontend-update"),
+  updatesOverview: () => request<UpdatesOverview>("/api/system/updates"),
+  installSystemNow: () => request<UpdateStatus>("/api/system/update/install-now", { method: "POST" }),
+  networkStatus: () => request<NetworkStatus>("/api/system/network"),
+  backups: () => request<BackupList>("/api/system/backups"),
+  backupDownloadUrl: "/api/system/backups/download",
   installUpdate: async (file: File): Promise<UpdateStatus> => {
     const response = await fetch("/api/system/update", {
       method: "POST",
