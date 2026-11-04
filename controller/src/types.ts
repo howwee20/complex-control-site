@@ -352,6 +352,7 @@ export interface StagedRelease {
 }
 
 export interface UpdateStatus {
+  feed?: { enabled: boolean; state: string; checked_at?: string; latest_version?: string };
   state: "idle" | "staged" | "waiting" | "installing" | "verifying" | "complete" | "failed" | "error";
   message: string;
   version?: string;

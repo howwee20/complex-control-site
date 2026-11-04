@@ -35,6 +35,18 @@ export function automaticUpdateSummary(network: NetworkStatus | null): string {
   return "The latest download could not be verified. The installed version keeps working.";
 }
 
+export function backendDownloadSummary(status: UpdateStatus | null): string {
+  const feed = status?.feed;
+  if (!feed || !feed.enabled) return "Automatic system downloads are not configured on this controller.";
+  if (feed.state === "current") return "The latest checked timing system is installed.";
+  if (feed.state === "downloading") return "Downloading a timing-system update. Racing keeps working.";
+  if (feed.state === "staged" || feed.state === "waiting") return "Update saved. Installation waits until racing is idle.";
+  if (feed.state === "offline") return "Offline. Updates resume when this controller has internet; racing keeps working.";
+  if (feed.state === "ahead") return "This controller is newer than the published timing system.";
+  if (feed.state === "failed" || feed.state === "rejected") return "Update needs attention. The installed version keeps working.";
+  return "Waiting for the automatic system update check.";
+}
+
 export function systemSummary(status: UpdateStatus | null, version: string | null): string {
   const installed = version ?? status?.current?.version ?? "unknown";
   if (!status) return installed;
@@ -148,7 +160,7 @@ export function SystemUpdates({ onError, onChangePin, onLock }: SystemUpdatesPro
           <p className="eyebrow">Controller interface</p>
           <p className="update-message">{interfaceSummary(frontend)}</p>
           <p className="update-detail">{automaticUpdateSummary(network)}</p>
-          <p className="update-detail">Signed updates install only when no race is running. When this controller has internet, it checks automatically every 15 minutes.</p>
+          <p className="update-detail">Signed updates install only when no race is running. When this controller has internet, it checks automatically about every 30 seconds on updated controllers.</p>
           <a className="primary-button update-link" href="https://mycomplexcontrol.com/field-update.html">Update Pi from this phone</a>
           {frontend?.state === "failed" && frontend.message && <p className="update-detail">{frontend.message}</p>}
         </article>
@@ -156,7 +168,8 @@ export function SystemUpdates({ onError, onChangePin, onLock }: SystemUpdatesPro
         <article className="update-card update-card-simple">
           <p className="eyebrow">Timing system</p>
           <p className="update-message">{systemSummary(system, backendVersion)}</p>
-          <p className="update-detail">Signed system releases install after racing and a quiet period. A failed installation restores the previous version and its data.</p>
+          <p className="update-detail">{backendDownloadSummary(system)}</p>
+          <p className="update-detail">System updates download automatically on configured controllers with internet, then install after 10 quiet minutes with no race running. A failed installation restores the previous version and its data.</p>
           {system?.last_error && system.state === "failed" && <p className="update-detail">{system.last_error}</p>}
           {systemPending && (
             <button className="primary-button" type="button" disabled={raceRunning} onClick={() => void installNow()}>
@@ -164,7 +177,7 @@ export function SystemUpdates({ onError, onChangePin, onLock }: SystemUpdatesPro
             </button>
           )}
           <details>
-            <summary>Install a system update file</summary>
+            <summary>Advanced: install an update file</summary>
             <p>Choose the signed <code>.signed.tgz</code> file from Files. It is checked and saved now, then installs when no race is running (about one minute). If anything goes wrong, the previous version and data are restored automatically.</p>
             <input type="file" accept=".tgz,.tar.gz,application/gzip" disabled={uploading} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
             <button className="secondary-button" type="button" disabled={!file || uploading} onClick={() => void upload()}>{uploading ? "Checking…" : "Save system update"}</button>

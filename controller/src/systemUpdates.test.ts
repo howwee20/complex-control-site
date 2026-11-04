@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { automaticUpdateSummary, interfaceSummary, internetSummary, systemSummary } from "./components/SystemUpdates";
+import { backendDownloadSummary, automaticUpdateSummary, interfaceSummary, internetSummary, systemSummary } from "./components/SystemUpdates";
 import type { FrontendUpdateStatus, NetworkStatus, UpdateStatus } from "./types";
 
 const frontend = (overrides: Partial<FrontendUpdateStatus>): FrontendUpdateStatus => ({
@@ -40,4 +40,13 @@ describe("update status wording", () => {
     expect(automaticUpdateSummary(network("ahead"))).toContain("newer than the published interface");
     expect(automaticUpdateSummary(network("staged"))).toContain("racing is idle");
   });
+});
+
+it("reports backend downloads without claiming offline is current", () => {
+  const state = (value: string): UpdateStatus => ({state: "idle", message: "", feed: {enabled: true, state: value}});
+  expect(backendDownloadSummary(state("current"))).toContain("latest checked");
+  expect(backendDownloadSummary(state("offline"))).toContain("Offline");
+  expect(backendDownloadSummary(state("failed"))).toContain("needs attention");
+  expect(backendDownloadSummary(state("staged"))).toContain("racing is idle");
+  expect(backendDownloadSummary(null)).toContain("not configured");
 });
