@@ -1,3 +1,4 @@
+import { startPhoneUpdates } from "./phoneUpdates";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api, connectRace, connectReader } from "./api";
 import { EventControl } from "./components/EventControl";
@@ -126,6 +127,10 @@ export default function App() {
     setReaderMode(health.reader_mode);
     setReaderEvent(reads[0] ?? null);
   }, []);
+
+  useEffect(() => {
+    if (!publicPreview && access === "open") return startPhoneUpdates();
+  }, [access]);
 
   useEffect(() => {
     if (publicPreview) return;
@@ -381,13 +386,10 @@ export default function App() {
           setAccess("open");
         })} />}
 
-        {!publicPreview && access === "open" && authEnabled && (pinIsDefault || !recoveryConfigured) && (
+        {!publicPreview && screen !== "updates" && access === "open" && authEnabled && (pinIsDefault || !recoveryConfigured) && (
           <aside className="preview-storage-notice" aria-label="Controller access">
             <div>
-              <strong>{pinIsDefault ? "This controller still uses the initial PIN" : "No owner recovery code yet"}</strong>
-              <p>{pinIsDefault
-                ? "Anyone who knows the published PIN can run races here. Choose your own four-digit PIN."
-                : "Create a recovery code so a forgotten PIN can be reset at the track without internet."}</p>
+              <strong>{pinIsDefault ? "Set your PIN" : "Save a recovery code"}</strong>
             </div>
             <button className="secondary-button" onClick={() => setPinDialog(true)}>{pinIsDefault ? "Change PIN" : "Create recovery code"}</button>
           </aside>

@@ -516,3 +516,9 @@ td:nth-child(2) small { color: var(--muted); margin-top: 4px; font: .63rem var(-
 .access-footnote { color: var(--muted); font-size: .78rem; line-height: 1.5; }
 .access-footnote code { font-size: .78rem; }
 @media (max-width: 760px) { .roster-backup { padding: 18px; } .roster-actions { width: 100%; } .roster-actions > * { flex: 1 1 100%; text-align: center; } }
+
+.settings-compact { border-top: 1px solid var(--border, #363238); }
+.settings-compact > div { display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 12px 0; border-bottom: 1px solid var(--border, #363238); flex-wrap: wrap; }
+.settings-compact strong { width: 90px; }
+.settings-compact span { flex: 1; color: #b9b5bb; }
+.settings-compact a { color: #ff8993; }
